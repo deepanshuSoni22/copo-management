@@ -1,0 +1,67 @@
+# .gitignore
+# This file specifies intentionally untracked files and directories to Git.
+
+# Python
+##############
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+bin/
+pip-log.log
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+.ipynb_checkpoints
+.pytest_cache/
+htmlcov/
+.nox/
+.egg-info/
+*.egg
+
+# Django
+##############
+*.log
+*.pot
+*.mo
+*.xml
+db.sqlite3
+/media/               # User-uploaded media files (if you implement this later)
+/staticfiles/         # Directory for collectstatic output (defined by STATIC_ROOT)
+*.sqlite3-journal     # For SQLite journals
+
+# Node.js / npm / Frontend Assets
+##############
+node_modules/          # Node.js dependency directory
+npm-debug.log          # npm debug log
+yarn-error.log         # yarn error log
+.npm/
+.yarn/
+/static/dist/          # Compiled Tailwind CSS output. This is generated, not source.
+.env                   # Local environment variables (if you start using them)
+
+# Editors / IDEs
+##############
+.idea/                 # JetBrains IDEs (e.g., PyCharm)
+.vscode/               # VS Code (settings, launch configs)
+*.swp
+*.swo
+*.DS_Store             # macOS system files
+Thumbs.db              # Windows thumbnail cache
+ehthumbs.db
+.directory
+
+# Testing / Reports
+##############
+.coverage
+.coverage.*
+.cache/
+
+# Sensitive / Local Configuration (add specific files as needed)
+##############
+# settings_local.py    # If you create local settings overrides
+# .env                 # For environment variables, if not already listed above
