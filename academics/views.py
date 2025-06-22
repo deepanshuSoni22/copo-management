@@ -1015,3 +1015,54 @@ def student_personal_marks_view(request):
         'form_title': 'My Assessment Marks',
     }
     return render(request, 'academics/student_marks_report.html', context)
+
+
+
+@login_required
+@user_passes_test(is_student, login_url='/accounts/login/')
+def student_personal_attainment_view(request):
+    student_user = request.user
+
+    # Get courses where student has marks
+    courses_with_student_marks = Course.objects.filter(
+        assessments__student_marks__student=student_user
+    ).distinct()
+
+    # Fix: Get academic years through assessments
+    academic_years = AcademicYear.objects.filter(
+        assessments__student_marks__student=student_user
+    ).distinct()
+
+    # CO Attainments
+    co_attainments = CourseOutcomeAttainment.objects.filter(
+        course_outcome__course__in=courses_with_student_marks,
+        academic_year__in=academic_years
+    ).select_related(
+        'course_outcome__course',
+        'course_outcome__course__department',
+        'academic_year'
+    ).order_by(
+        '-academic_year__start_date',
+        'course_outcome__course__code',
+        'course_outcome__code'
+    )
+
+    # PO Attainments
+    po_attainments = ProgramOutcomeAttainment.objects.filter(
+        academic_year__in=academic_years
+    ).select_related(
+        'program_outcome',
+        'academic_year'
+    ).order_by(
+        '-academic_year__start_date',
+        'program_outcome__code'
+    )
+
+    context = {
+        'student_user': student_user,
+        'co_attainments': co_attainments,
+        'po_attainments': po_attainments,
+        'form_title': 'My Attainment Overview',
+    }
+    return render(request, 'academics/student_attainment_report.html', context)
+

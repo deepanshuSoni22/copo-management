@@ -58,6 +58,7 @@ urlpatterns = [
     path('co-attainment-report/', views.co_attainment_report_list, name='co_attainment_report_list'),
     path('po-attainment-report/', views.po_attainment_report_list, name='po_attainment_report_list'),
 
-    # Student Personal Views (NEW)
+   # Student Personal Views (NEW)
     path('my-marks/', views.student_personal_marks_view, name='student_personal_marks_view'),
+    path('my-attainment/', views.student_personal_attainment_view, name='student_personal_attainment_view'), # NEW
 ]
