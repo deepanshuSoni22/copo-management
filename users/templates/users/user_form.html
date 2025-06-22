@@ -9,20 +9,20 @@
         .password-field-container {
             position: relative;
         }
-        
+
         /* Password input needs right padding for icon space */
         .password-input-with-toggle {
             padding-right: 2.5rem !important;
         }
-        
+
         /* Password toggle icon positioning */
         .password-toggle-icon {
             cursor: pointer;
             position: absolute;
-            right: 0.75rem; /* Tailwind 'right-3' */
+            right: 0.75rem;
             top: 50%;
             transform: translateY(-50%);
-            color: #6B7280; /* Tailwind 'text-gray-500' */
+            color: #6B7280;
             transition: color 0.15s ease-in-out;
             z-index: 20;
             pointer-events: auto;
@@ -33,7 +33,7 @@
             justify-content: center;
         }
         .password-toggle-icon:hover {
-            color: #374151; /* Tailwind 'text-gray-700' */
+            color: #374151;
         }
     </style>
 {% endblock %}
@@ -94,21 +94,6 @@
                 {% endif %}
             </div>
 
-            {# --- NEW: Is Active Field --- #}
-            {# Check if the form field exists before trying to render it #}
-            {% if 'is_active' in form.fields %}
-            <div class="flex items-center">
-                {{ form.is_active }} {# Renders the checkbox input #}
-                <label for="{{ form.is_active.id_for_label }}" class="ml-2 block text-sm font-medium text-gray-700">
-                    {{ form.is_active.label }}
-                </label>
-                {% if form.is_active.errors %}
-                    <p class="mt-2 text-sm text-red-600">{{ form.is_active.errors.as_text }}</p>
-                {% endif %}
-            </div>
-            {% endif %}
-            {# --- END NEW --- #}
-
             {# --- Password Fields (only for create form) - FIXED BLOCK --- #}
             {% if form.password1 %} 
                 <div class="password-field-container"> {# Container for password input and toggle icon #}
@@ -123,7 +108,7 @@
                         <p class="mt-2 text-sm text-red-600">{{ form.password1.errors.as_text }}</p>
                     {% endif %}
                 </div>
-                <div class="relative"> {# Container for password confirmation and toggle icon #}
+                <div class="password-field-container"> {# Container for password confirmation and toggle icon #}
                     <label for="id_password2" class="block text-sm font-medium text-gray-700 mb-1">{{ form.password2.label }}</label>
                     <input type="password" name="{{ form.password2.name }}" id="id_password2" required
                            class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base"
@@ -155,30 +140,31 @@
             </div>
         </form>
     </div>
+{% endblock %}
 
-    {% block extra_js %}
+{% block extra_js22 %}
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            console.log("DOMContentLoaded fired. Setting up password toggles."); // Debugging line
+            console.log("DOMContentLoaded fired. Setting up password toggles.");
 
             function setupPasswordToggle(inputId, toggleId) {
                 const passwordInput = document.getElementById(inputId);
                 const toggleIcon = document.getElementById(toggleId);
 
-                console.log(`Attempting to set up: Input ID = ${inputId}, Toggle ID = ${toggleId}`); // Debugging line
-                console.log(`Found passwordInput: ${!!passwordInput}, Found toggleIcon: ${!!toggleIcon}`); // Debugging line
+                console.log(`Attempting to set up: Input ID = ${inputId}, Toggle ID = ${toggleId}`);
+                console.log(`Found passwordInput: ${!!passwordInput}, Found toggleIcon: ${!!toggleIcon}`);
 
                 if (passwordInput && toggleIcon) {
                     toggleIcon.addEventListener('click', function () {
-                        console.log(`Toggle icon clicked for ${inputId}`); // Debugging line
+                        console.log(`Toggle icon clicked for ${inputId}`);
                         const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
                         passwordInput.setAttribute('type', type);
                         // Optional: change icon to reflect state (e.g., eye-open/eye-closed)
                         // For now, it stays the same icon
-                        console.log(`Password type changed to: ${type}`); // Debugging line
+                        console.log(`Password type changed to: ${type}`);
                     });
                 } else {
-                    console.error(`Failed to find elements for ${inputId} or ${toggleId}. Check IDs.`); // Debugging error
+                    console.error(`Failed to find elements for ${inputId} or ${toggleId}. Check IDs.`);
                 }
             }
 
@@ -186,5 +172,4 @@
             setupPasswordToggle('id_password2', 'togglePassword2');
         });
     </script>
-    {% endblock %}
 {% endblock %}
