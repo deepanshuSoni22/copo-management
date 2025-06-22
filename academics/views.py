@@ -982,3 +982,36 @@ def po_attainment_report_list(request):
         'form_title': 'Program Outcome Attainment Report',
     }
     return render(request, 'academics/po_attainment_report_list.html', context)
+
+
+# --- Student Personal Views ---
+
+@login_required
+@user_passes_test(is_student, login_url='/accounts/login/')  # Only Students can access
+def student_personal_marks_view(request):
+    student_user = request.user
+
+    # Get all marks for the logged-in student
+    student_marks = StudentMark.objects.filter(student=student_user).select_related(
+        'assessment__course',
+        'assessment__academic_year',
+        'assessment__assessment_type'
+    ).order_by(
+        '-assessment__academic_year__start_date',
+        'assessment__course__code',
+        'assessment__date'
+    )
+
+    # Calculate percentage for each mark
+    for mark in student_marks:
+        if mark.marks_obtained is not None and mark.assessment.max_marks:
+            mark.percentage = (mark.marks_obtained / mark.assessment.max_marks) * 100
+        else:
+            mark.percentage = None
+
+    context = {
+        'student_user': student_user,
+        'student_marks': student_marks,
+        'form_title': 'My Assessment Marks',
+    }
+    return render(request, 'academics/student_marks_report.html', context)
