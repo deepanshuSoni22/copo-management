@@ -1,0 +1,78 @@
+{# academics/templates/academics/calculate_attainment_form.html #}
+{% extends 'base.html' %}
+
+{% block title %}Calculate Attainment{% endblock %}
+
+{% block content %}
+    <div class="bg-white rounded-lg shadow-md p-6 mb-8 max-w-2xl mx-auto">
+        <h1 class="text-3xl font-bold text-gray-800 mb-6">Calculate Attainment</h1>
+        <p class="text-gray-600 mb-8">
+            Choose an option below to trigger the attainment calculations.
+            Ensure all relevant data (Course Outcomes, PO mappings, Assessments, Student Marks) is entered for the selected Academic Year and Courses.
+        </p>
+
+        <form method="post" class="space-y-6">
+            {% csrf_token %}
+
+            {% if messages %}
+                <div class="mb-4">
+                    {% for message in messages %}
+                        <div class="p-3 mb-2 rounded {% if message.tags == 'success' %}bg-green-100 text-green-700 border border-green-200{% elif message.tags == 'error' %}bg-red-100 text-red-700 border border-red-200{% elif message.tags == 'warning' %}bg-yellow-100 text-yellow-700 border border-yellow-200{% else %}bg-blue-100 text-blue-700 border border-blue-200{% endif %}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            <div class="border-b border-gray-200 pb-4 mb-4">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4">Calculate Course Outcome Attainment (per Course)</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label for="id_co_academic_year" class="block text-sm font-medium text-gray-700 mb-1">Select Academic Year:</label>
+                        <select name="co_academic_year" id="id_co_academic_year" {# CHANGED NAME HERE #}
+                                class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base">
+                            <option value="">-- Select Academic Year --</option>
+                            {% for year in academic_years %}
+                                <option value="{{ year.pk }}">{{ year.start_date.year }}-{{ year.end_date.year }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label for="id_co_course" class="block text-sm font-medium text-gray-700 mb-1">Select Course:</label>
+                        <select name="co_course" id="id_co_course" {# CHANGED NAME HERE #}
+                                class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base">
+                            <option value="">-- Select Course --</option>
+                            {% for course in courses %}
+                                <option value="{{ course.pk }}">{{ course.code }} - {{ course.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit" name="calc_type" value="co_by_course"
+                            class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out">
+                        Calculate CO Attainment for Selected Course
+                    </button>
+                </div>
+            </div>
+
+            <div>
+                <h2 class="text-xl font-semibold text-gray-800 mb-4">Calculate Program Outcome Attainment (per Academic Year)</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label for="id_po_academic_year" class="block text-sm font-medium text-gray-700 mb-1">Select Academic Year:</label>
+                        <select name="po_academic_year" id="id_po_academic_year" {# CHANGED NAME HERE #}
+                                class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base">
+                            <option value="">-- Select Academic Year --</option>
+                            {% for year in academic_years %}
+                                <option value="{{ year.pk }}">{{ year.start_date.year }}-{{ year.end_date.year }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit" name="calc_type" value="po_by_year"
+                            class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition duration-150 ease-in-out">
+                        Calculate PO Attainment for Selected Year
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+{% endblock %}

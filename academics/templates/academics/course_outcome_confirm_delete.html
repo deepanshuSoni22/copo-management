@@ -1,0 +1,28 @@
+{# academics/templates/academics/course_outcome_confirm_delete.html #}
+{% extends 'base.html' %}
+
+{% block title %}Confirm Delete Course Outcome{% endblock %}
+
+{% block content %}
+    <div class="bg-white rounded-lg shadow-md p-6 max-w-md mx-auto text-center">
+        <h1 class="text-2xl font-bold text-red-700 mb-4">Confirm Deletion</h1>
+        <p class="text-gray-700 mb-6">
+            Are you sure you want to delete Course Outcome:
+            <span class="font-semibold">{{ course_outcome.code }}</span> for Course
+            <span class="font-semibold">{{ course_outcome.course.code }} - "{{ course_outcome.course.name }}"</span>?
+        </p>
+        <p class="text-sm text-gray-500 mb-8">This action cannot be undone.</p>
+
+        <form method="post" action="{% url 'course_outcome_delete' course_outcome.pk %}" class="flex justify-center space-x-4">
+            {% csrf_token %}
+            <button type="submit"
+                    class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition duration-150 ease-in-out">
+                Yes, Delete
+            </button>
+            <a href="{% url 'course_outcome_list' %}"
+               class="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out">
+                Cancel
+            </a>
+        </form>
+    </div>
+{% endblock %}

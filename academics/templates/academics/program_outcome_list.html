@@ -1,0 +1,51 @@
+{# academics/templates/academics/program_outcome_list.html #}
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Program Outcomes{% endblock %}
+
+{% block content %}
+    <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-3xl font-bold text-gray-800">Program Outcomes</h1>
+            <a href="{% url 'program_outcome_create' %}"
+               class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out">
+                <svg class="w-5 h-5 mr-2 -ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                Add Program Outcome
+            </a>
+        </div>
+
+        {% if program_outcomes %}
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider rounded-tl-lg">Code</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                            <th scope="col" class="relative px-6 py-3 rounded-tr-lg">
+                                <span class="sr-only">Actions</span>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for po in program_outcomes %}
+                        <tr class="hover:bg-gray-50 transition duration-150 ease-in-out">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ po.code }}</td>
+                            <td class="px-6 py-4 text-sm text-gray-700">{{ po.description }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <a href="{% url 'program_outcome_update' po.pk %}" class="text-indigo-600 hover:text-indigo-900 mr-4">Edit</a>
+                                <a href="{% url 'program_outcome_delete' po.pk %}" class="text-red-600 hover:text-red-900"
+                                   onclick="return confirm('Are you sure you want to delete Program Outcome {{ po.code }}?');">
+                                   Delete
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="text-gray-600">No program outcomes found. Please add one.</p>
+        {% endif %}
+    </div>
+{% endblock %}

@@ -1,0 +1,72 @@
+{# academics/templates/academics/po_attainment_report_list.html #}
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ form_title }}{% endblock %}
+
+{% block content %}
+    <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+        <h1 class="text-3xl font-bold text-gray-800 mb-6">{{ form_title }}</h1>
+
+        {# Filters Section #}
+        <form method="get" class="mb-8 p-4 bg-gray-50 rounded-lg shadow-sm flex flex-wrap items-center space-y-4 md:space-y-0 md:space-x-4">
+            <div class="w-full md:w-auto flex-grow">
+                <label for="academic_year_filter" class="block text-sm font-medium text-gray-700 mb-1">Academic Year:</label>
+                <select name="academic_year" id="academic_year_filter"
+                        class="mt-1 block w-full md:w-auto px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                    <option value="">All Years</option>
+                    {% for year in academic_years %}
+                        <option value="{{ year.pk }}" {% if selected_academic_year_id|stringformat:"s" == year.pk|stringformat:"s" %}selected{% endif %}>
+                            {{ year.start_date.year }}-{{ year.end_date.year }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="w-full md:w-auto pt-5 md:pt-0"> {# Added padding top for button alignment #}
+                <button type="submit"
+                        class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out">
+                    Apply Filters
+                </button>
+            </div>
+        </form>
+
+        {% if po_attainments %}
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider rounded-tl-lg">Academic Year</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PO Code</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PO Description</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider text-center">Attainment %</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for po_att in po_attainments %}
+                        <tr class="hover:bg-gray-50 transition duration-150 ease-in-out">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                {{ po_att.academic_year.start_date.year }}-{{ po_att.academic_year.end_date.year }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                                {{ po_att.program_outcome.code }}
+                            </td>
+                            <td class="px-6 py-4 text-sm text-gray-700">{{ po_att.program_outcome.description|truncatechars:70 }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-center">
+                                {% if po_att.attainment_percentage is not None %}
+                                    <span class="{% if po_att.attainment_percentage >= 60 %}text-green-600{% elif po_att.attainment_percentage >= 40 %}text-yellow-600{% else %}text-red-600{% endif %}">
+                                        {{ po_att.attainment_percentage|floatformat:2 }}%
+                                    </span>
+                                {% else %}
+                                    <span class="text-gray-500 italic">N/A</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="text-gray-600">No Program Outcome Attainment data found for the selected filters. Please ensure attainment calculations have been run.</p>
+        {% endif %}
+    </div>
+{% endblock %}
