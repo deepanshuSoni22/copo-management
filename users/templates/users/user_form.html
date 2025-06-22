@@ -96,6 +96,20 @@
                 {% endif %}
             </div>
 
+            {# --- NEW: Is Active Field --- #}
+            {% if form.is_active %} {# Only show if is_active field is present in the form #}
+            <div class="flex items-center">
+                {{ form.is_active }} {# Renders the checkbox input #}
+                <label for="{{ form.is_active.id_for_label }}" class="ml-2 block text-sm font-medium text-gray-700">
+                    {{ form.is_active.label }}
+                </label>
+                {% if form.is_active.errors %}
+                    <p class="mt-2 text-sm text-red-600">{{ form.is_active.errors.as_text }}</p>
+                {% endif %}
+            </div>
+            {% endif %}
+            {# --- END NEW --- #}
+
             {# --- Password Fields (only for create form) - FIXED BLOCK --- #}
             {% if form.password1 %} 
             {# --- Password Fields (only for create form) - FIXED BLOCK --- #}
