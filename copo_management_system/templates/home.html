@@ -95,8 +95,8 @@
         {% endif %}
 
         {% if user.profile.role == 'STUDENT' %}
-            <a href="{% url 'student_personal_marks_view' %}" class="flex items-center justify-center p-4 bg-white rounded-lg shadow-md text-blue-700 font-semibold hover:bg-indigo-50 hover:shadow-lg transition duration-200 ease-in-out text-center">View My Marks (Coming Soon)</a>
-            <a href="{% url 'student_personal_attainment_view' %}" class="flex items-center justify-center p-4 bg-white rounded-lg shadow-md text-blue-700 font-semibold hover:bg-indigo-50 hover:shadow-lg transition duration-200 ease-in-out text-center">View My Attainment (Coming Soon)</a>
+            <a href="{% url 'student_personal_marks_view' %}" class="flex items-center justify-center p-4 bg-white rounded-lg shadow-md text-blue-700 font-semibold hover:bg-indigo-50 hover:shadow-lg transition duration-200 ease-in-out text-center">View My Marks</a>
+            <a href="{% url 'student_personal_attainment_view' %}" class="flex items-center justify-center p-4 bg-white rounded-lg shadow-md text-blue-700 font-semibold hover:bg-indigo-50 hover:shadow-lg transition duration-200 ease-in-out text-center">View My Attainment</a>
             <a href="#" class="flex items-center justify-center p-4 bg-white rounded-lg shadow-md text-blue-700 font-semibold hover:bg-indigo-50 hover:shadow-lg transition duration-200 ease-in-out text-center">Submit Course Feedback (Coming Soon)</a>
         {% endif %}
     </div>
