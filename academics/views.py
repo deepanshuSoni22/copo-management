@@ -153,13 +153,13 @@ def academic_year_delete(request, pk):
 # (Continue with Department views later in this file)
 
 @login_required
-@user_passes_test(is_admin_or_superuser, login_url='/accounts/login/')
+@user_passes_test(is_admin_or_hod, login_url='/accounts/login/')
 def department_list(request):
     departments = Department.objects.all().select_related('hod__user').order_by('name')
     return render(request, 'academics/department_list.html', {'departments': departments})
 
 @login_required
-@user_passes_test(is_admin_or_superuser, login_url='/accounts/login/')
+@user_passes_test(is_admin_or_hod, login_url='/accounts/login/')
 def department_create(request):
     if request.method == 'POST':
         form = DepartmentForm(request.POST)
@@ -174,7 +174,7 @@ def department_create(request):
     return render(request, 'academics/department_form.html', {'form': form, 'form_title': 'Create Department'})
 
 @login_required
-@user_passes_test(is_admin_or_superuser, login_url='/accounts/login/')
+@user_passes_test(is_admin_or_hod, login_url='/accounts/login/')
 def department_update(request, pk):
     department = get_object_or_404(Department, pk=pk)
     if request.method == 'POST':
@@ -190,7 +190,7 @@ def department_update(request, pk):
     return render(request, 'academics/department_form.html', {'form': form, 'form_title': 'Update Department'})
 
 @login_required
-@user_passes_test(is_admin_or_superuser, login_url='/accounts/login/')
+@user_passes_test(is_admin_or_hod, login_url='/accounts/login/')
 def department_delete(request, pk):
     department = get_object_or_404(Department, pk=pk)
     if request.method == 'POST':

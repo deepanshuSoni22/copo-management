@@ -41,13 +41,16 @@
                         <span class="truncate">User Management</span>
                     </a>
                 {% endif %}
+                {% if user.is_superuser or user.profile.role == 'ADMIN' %}
                 <a href="{% url 'academic_year_list' %}"
                    class="flex items-center px-3 lg:px-4 py-2 rounded-lg text-xs lg:text-sm font-medium transition duration-200
                           {% if 'academic_year' in request.resolver_match.url_name %}bg-indigo-700 text-white shadow-md{% else %}text-indigo-200 hover:bg-indigo-800 hover:text-white{% endif %}">
                     <svg class="w-4 h-4 lg:w-5 lg:h-5 mr-2 lg:mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                     <span class="truncate">Academic Years</span>
                 </a>
+                {% endif %}
                 {# More sidebar links will go here (e.g., Departments, Courses, etc.) #}
+                {% if user.is_superuser or user.profile.role == 'ADMIN' or user.profile.role == 'HOD' %}
                 {# NEW: Department Link #}
                 <a href="{% url 'department_list' %}"
                    class="flex items-center px-3 lg:px-4 py-2 rounded-lg text-xs lg:text-sm font-medium transition duration-200
@@ -55,6 +58,8 @@
                     <svg class="w-4 h-4 lg:w-5 lg:h-5 mr-2 lg:mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m-1 4h1m-1 4h1m-5 3H9m14-8a2 2 0 01-2 2H7a2 2 0 01-2-2V7a2 2 0 012-2h10a2 2 0 012 2v12z"></path></svg>
                     <span class="truncate">Departments</span>
                 </a>
+                {% endif %}
+                {% if user.is_superuser or user.profile.role == 'ADMIN'%}
                 {# NEW: Program Outcomes Link #}
                 <a href="{% url 'program_outcome_list' %}"
                    class="flex items-center px-3 lg:px-4 py-2 rounded-lg text-xs lg:text-sm font-medium transition duration-200
@@ -62,6 +67,8 @@
                     <svg class="w-4 h-4 lg:w-5 lg:h-5 mr-2 lg:mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 2v-6m2 9H7a2 2 0 01-2-2V5a2 2 0 012-2h10a2 2 0 012 2v12a2 2 0 01-2 2z"></path></svg>
                     <span class="truncate">Program Outcomes</span>
                 </a>
+                {% endif %}
+                {% if user.is_superuser or user.profile.role == 'ADMIN' or user.profile.role == 'HOD' %}
                 {# NEW: Assessment Types Link #}
                 <a href="{% url 'assessment_type_list' %}"
                    class="flex items-center px-3 lg:px-4 py-2 rounded-lg text-xs lg:text-sm font-medium transition duration-200
@@ -69,6 +76,8 @@
                     <svg class="w-4 h-4 lg:w-5 lg:h-5 mr-2 lg:mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                     <span class="truncate">Assessment Types</span>
                 </a>
+                {% endif %}
+                {% if user.profile.role == 'ADMIN' or user.profile.role == 'HOD' %}
                 {# NEW: Course Link #}
                 <a href="{% url 'course_list' %}"
                    class="flex items-center px-3 lg:px-4 py-2 rounded-lg text-xs lg:text-sm font-medium transition duration-200
@@ -76,6 +85,8 @@
                     <svg class="w-4 h-4 lg:w-5 lg:h-5 mr-2 lg:mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13.438m0-13.438a4.5 4.5 0 100-9 4.5 4.5 0 000 9zm-7.5 0h15M12 6.253c1.867 0 3.682.525 5.176 1.426L22 4m-4 8a2 2 0 11-4 0 2 2 0 014 0zm-7.5 0h15"></path></svg>
                     <span class="truncate">Courses</span>
                 </a>
+                {% endif %}
+                {% if user.profile.role == 'ADMIN' or user.profile.role == 'HOD'  or user.profile.role == 'FACULTY' %}
                 {# NEW: Course Outcomes Link #}
                 <a href="{% url 'course_outcome_list' %}"
                    class="flex items-center px-3 lg:px-4 py-2 rounded-lg text-xs lg:text-sm font-medium transition duration-200
@@ -83,6 +94,8 @@
                     <svg class="w-4 h-4 lg:w-5 lg:h-5 mr-2 lg:mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
                     <span class="truncate">Course Outcomes</span>
                 </a>
+                {% endif %}
+                {% if user.is_superuser or user.profile.role == 'ADMIN' or user.profile.role == 'HOD' or user.profile.role == 'FACULTY' %}
                 {# NEW: Assessments Link #}
                 <a href="{% url 'assessment_list' %}"
                    class="flex items-center px-3 lg:px-4 py-2 rounded-lg text-xs lg:text-sm font-medium transition duration-200
@@ -90,6 +103,8 @@
                     <svg class="w-4 h-4 lg:w-5 lg:h-5 mr-2 lg:mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
                     <span class="truncate">Assessments</span>
                 </a>
+                {% endif %}
+                {% if user.profile.role == 'ADMIN' or user.profile.role == 'HOD' %}
                 {# NEW: Calculate Attainment Link #}
                 <a href="{% url 'calculate_attainment_view' %}"
                    class="flex items-center px-3 lg:px-4 py-2 rounded-lg text-xs lg:text-sm font-medium transition duration-200
@@ -97,6 +112,8 @@
                     <svg class="w-4 h-4 lg:w-5 lg:h-5 mr-2 lg:mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
                     <span class="truncate">Calculate Attainment</span>
                 </a>
+                {% endif %}
+                {% if user.is_superuser or user.profile.role == 'ADMIN' or user.profile.role == 'HOD' or user.profile.role == 'FACULTY' %}
                 {# NEW: Attainment Reports Group #}
                 <div class="px-3 lg:px-4 pt-4 text-xs lg:text-sm font-semibold text-indigo-400 uppercase tracking-wider">
                     Attainment Reports
@@ -113,6 +130,7 @@
                     <svg class="w-4 h-4 lg:w-5 lg:h-5 mr-2 lg:mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c1.558 0 3.093.048 4.606.145M12 8a7.964 7.964 0 00-2.348.608M12 8a7.964 7.964 0 012.348.608M9 17.25c.42.062.842.098 1.27.106M9 17.25a6.002 6.002 0 00-2.502-.377c-2.377-.502-4.14-.5-4.14-.5h-.001V12.75a.75.75 0 01.75-.75h3.582a3 3 0 001.309-3.774M15 17.25c-.42.062-.842.098-1.27.106m1.27-.106a6.002 6.002 0 012.502-.377c2.377-.502 4.14-.5 4.14-.5h.001V12.75a.75.75 0 00-.75-.75H17.25a3 3 0 01-1.309-3.774M12 8a9.002 9.002 0 00-2.032-.267M12 8a9.002 9.002 0 012.032-.267M9 17.25c-.42.062-.842.098-1.27.106M9 17.25a6.002 6.002 0 00-2.502-.377c-2.377-.502-4.14-.5-4.14-.5h-.001V12.75a.75.75 0 01.75-.75h3.582a3 3 0 001.309-3.774M15 17.25c-.42.062-.842.098-1.27.106m1.27-.106a6.002 6.002 0 012.502-.377c2.377-.502 4.14-.5 4.14-.5h.001V12.75a.75.75 0 00-.75-.75H17.25a3 3 0 01-1.309-3.774M12 8a9.002 9.002 0 00-2.032-.267"></path></svg>
                     <span class="truncate">PO Attainment</span>
                 </a>
+                {% endif %}
             </nav>
             
             {# Desktop User Section #}
@@ -166,41 +184,52 @@
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h-4v-2a3 3 0 00-3-3H9a3 3 0 00-3 3v2H2M3 10V4a2 2 0 012-2h4a2 2 0 012 2v6m-4 0h6m-3 0V4a2 2 0 00-2-2H5a2 2 0 00-2 2v6m10-2h4a2 2 0 012 2v6m-2 0H14v-2a3 3 0 00-3-3h-2a3 3 0 00-3 3v2H2M3 10V4a2 2 0 012-2h4a2 2 0 012 2v6m-4 0h6m-3 0V4a2 2 0 00-2-2H5a2 2 0 00-2 2v6m10-2h4a2 2 0 012 2v6"></path></svg>
                     </a>
                 {% endif %}
+                {% if user.is_superuser or user.profile.role == 'ADMIN' %}
                 <a href="{% url 'academic_year_list' %}"
                    title="Academic Years"
                    class="flex items-center justify-center p-3 rounded-lg transition duration-200
                           {% if 'academic_year' in request.resolver_match.url_name %}bg-indigo-700 text-white shadow-md{% else %}text-indigo-200 hover:bg-indigo-800 hover:text-white{% endif %}">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                 </a>
+                {% endif %}
                 {# More collapsed sidebar links will go here #}
                 {# NEW: Department Link #}
+                {% if user.is_superuser or user.profile.role == 'ADMIN' or user.profile.role == 'HOD' %}
                 <a href="{% url 'department_list' %}"
                    title="Departments"
                    class="flex items-center justify-center p-3 rounded-lg transition duration-200
                            {% if 'department' in request.resolver_match.url_name %}bg-indigo-700 text-white shadow-md{% else %}text-indigo-200 hover:bg-indigo-800 hover:text-white{% endif %}">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m-1 4h1m-1 4h1m-5 3H9m14-8a2 2 0 01-2 2H7a2 2 0 01-2-2V7a2 2 0 012-2h10a2 2 0 012 2v12z"></path></svg>
                 </a>
+                {% endif %}
                 {# NEW: Program Outcomes Link #}
+                {% if user.is_superuser or user.profile.role == 'ADMIN' %}
                 <a href="{% url 'program_outcome_list' %}"
                    title="Program Outcomes"
                    class="flex items-center justify-center p-3 rounded-lg transition duration-200
                            {% if 'program_outcome' in request.resolver_match.url_name %}bg-indigo-700 text-white shadow-md{% else %}text-indigo-200 hover:bg-indigo-800 hover:text-white{% endif %}">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 2v-6m2 9H7a2 2 0 01-2-2V5a2 2 0 012-2h10a2 2 0 012 2v12a2 2 0 01-2 2z"></path></svg>
                 </a>
+                {% endif %}
                 {# NEW: Assessment Types Link #}
+                {% if user.is_superuser or user.profile.role == 'ADMIN' or user.profile.role == 'HOD' %}
                 <a href="{% url 'assessment_type_list' %}"
                    title="Assessment Types"
                    class="flex items-center justify-center p-3 rounded-lg transition duration-200
                            {% if 'assessment_type' in request.resolver_match.url_name %}bg-indigo-700 text-white shadow-md{% else %}text-indigo-200 hover:bg-indigo-800 hover:text-white{% endif %}">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                 </a>
+                {% endif %}
                 {# NEW: Course Link #}
+                {% if user.profile.role == 'ADMIN' or user.profile.role == 'HOD' %}
                 <a href="{% url 'course_list' %}"
                    title="Courses"
                    class="flex items-center justify-center p-3 rounded-lg transition duration-200
                            {% if 'course_list' == request.resolver_match.url_name or 'course_create' == request.resolver_match.url_name or 'course_update' in request.resolver_match.url_name or 'course_delete' in request.resolver_match.url_name %}bg-indigo-700 text-white shadow-md{% else %}text-indigo-200 hover:bg-indigo-800 hover:text-white{% endif %}">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13.438m0-13.438a4.5 4.5 0 100-9 4.5 4.5 0 000 9zm-7.5 0h15M12 6.253c1.867 0 3.682.525 5.176 1.426L22 4m-4 8a2 2 0 11-4 0 2 2 0 014 0zm-7.5 0h15"></path></svg>
                 </a>
+                {% endif %}
+                {% if user.profile.role == 'ADMIN' or user.profile.role == 'HOD' or user.profile.role == 'FACULTY' %}
                 {# NEW: Course Outcomes Link #}
                 <a href="{% url 'course_outcome_list' %}"
                    title="Course Outcomes"
@@ -208,20 +237,26 @@
                            {% if 'course_outcome' in request.resolver_match.url_name %}bg-indigo-700 text-white shadow-md{% else %}text-indigo-200 hover:bg-indigo-800 hover:text-white{% endif %}">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
                 </a>
+                {% endif %}
                 {# NEW: Assessments Link #}
+                {% if user.is_superuser or user.profile.role == 'ADMIN' or user.profile.role == 'HOD' or user.profile.role == 'FACULTY' %}
                 <a href="{% url 'assessment_list' %}"
                    title="Assessments"
                    class="flex items-center justify-center p-3 rounded-lg transition duration-200
                            {% if 'assessment_' in request.resolver_match.url_name and 'assessment_type' not in request.resolver_match.url_name %}bg-indigo-700 text-white shadow-md{% else %}text-indigo-200 hover:bg-indigo-800 hover:text-white{% endif %}">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
                 </a>
+                {% endif %}
                 {# NEW: Calculate Attainment Link #}
+                {% if user.profile.role == 'ADMIN' or user.profile.role == 'HOD' %}
                 <a href="{% url 'calculate_attainment_view' %}"
                    title="Calculate Attainment"
                    class="flex items-center justify-center p-3 rounded-lg transition duration-200
                            {% if 'calculate_attainment' in request.resolver_match.url_name %}bg-indigo-700 text-white shadow-md{% else %}text-indigo-200 hover:bg-indigo-800 hover:text-white{% endif %}">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
                 </a>
+                {% endif %}
+                {% if user.is_superuser or user.profile.role == 'ADMIN' or user.profile.role == 'HOD' or user.profile.role == 'FACULTY' %}
                 {# NEW: Attainment Reports Group #}
                 <div class="px-2 pt-3 text-xs font-semibold text-indigo-400 uppercase tracking-wider truncate">
                     Reports
@@ -238,6 +273,7 @@
                            {% if 'po_attainment_report' in request.resolver_match.url_name %}bg-indigo-700 text-white shadow-md{% else %}text-indigo-200 hover:bg-indigo-800 hover:text-white{% endif %}">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c1.558 0 3.093.048 4.606.145M12 8a7.964 7.964 0 00-2.348.608M12 8a7.964 7.964 0 012.348.608M9 17.25c.42.062.842.098 1.27.106M9 17.25a6.002 6.002 0 00-2.502-.377c-2.377-.502-4.14-.5-4.14-.5h-.001V12.75a.75.75 0 01.75-.75h3.582a3 3 0 001.309-3.774M15 17.25c-.42.062-.842.098-1.27.106m1.27-.106a6.002 6.002 0 012.502-.377c2.377-.502 4.14-.5 4.14-.5h.001V12.75a.75.75 0 00-.75-.75H17.25a3 3 0 01-1.309-3.774M12 8a9.002 9.002 0 00-2.032-.267M12 8a9.002 9.002 0 012.032-.267M9 17.25c-.42.062-.842.098-1.27.106M9 17.25a6.002 6.002 0 00-2.502-.377c-2.377-.502-4.14-.5-4.14-.5h-.001V12.75a.75.75 0 01.75-.75h3.582a3 3 0 001.309-3.774M15 17.25c-.42.062-.842.098-1.27.106m1.27-.106a6.002 6.002 0 012.502-.377c2.377-.502 4.14-.5 4.14-.5h.001V12.75a.75.75 0 00-.75-.75H17.25a3 3 0 01-1.309-3.774M12 8a9.002 9.002 0 00-2.032-.267"></path></svg>
                 </a>
+                {% endif %}
             </nav>
             
             {# Tablet Collapsed User Section #}
@@ -290,63 +326,80 @@
                         <span class="truncate">User Management</span>
                     </a>
                 {% endif %}
+                {% if user.is_superuser or user.profile.role == 'ADMIN' %}
                 <a href="{% url 'academic_year_list' %}"
                    class="flex items-center px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg text-sm sm:text-base font-medium transition duration-200
                           {% if 'academic_year' in request.resolver_match.url_name %}bg-indigo-700 text-white shadow-md{% else %}text-indigo-200 hover:bg-indigo-800 hover:text-white{% endif %}">
                     <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                     Academic Years
                 </a>
+                {% endif %}
                 {# More mobile sidebar links will go here #}
                 {# NEW: Department Link #}
+                {% if user.is_superuser or user.profile.role == 'ADMIN' or user.profile.role == 'HOD' %}
                 <a href="{% url 'department_list' %}"
                    class="flex items-center px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg text-sm sm:text-base font-medium transition duration-200
                            {% if 'department' in request.resolver_match.url_name %}bg-indigo-700 text-white shadow-md{% else %}text-indigo-200 hover:bg-indigo-800 hover:text-white{% endif %}">
                     <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m-1 4h1m-1 4h1m-5 3H9m14-8a2 2 0 01-2 2H7a2 2 0 01-2-2V7a2 2 0 012-2h10a2 2 0 012 2v12z"></path></svg>
                     Departments
                 </a>
+                {% endif %}
                 {# NEW: Program Outcomes Link #}
+                {% if user.is_superuser or user.profile.role == 'ADMIN' %}
                 <a href="{% url 'program_outcome_list' %}"
                    class="flex items-center px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg text-sm sm:text-base font-medium transition duration-200
                            {% if 'program_outcome' in request.resolver_match.url_name %}bg-indigo-700 text-white shadow-md{% else %}text-indigo-200 hover:bg-indigo-800 hover:text-white{% endif %}">
                     <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 2v-6m2 9H7a2 2 0 01-2-2V5a2 2 0 012-2h10a2 2 0 012 2v12a2 2 0 01-2 2z"></path></svg>
                     Program Outcomes
                 </a>
+                {% endif %}
                 {# NEW: Assessment Types Link #}
+                {% if user.is_superuser or user.profile.role == 'ADMIN' or user.profile.role == 'HOD' %}
                 <a href="{% url 'assessment_type_list' %}"
                    class="flex items-center px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg text-sm sm:text-base font-medium transition duration-200
                            {% if 'assessment_type' in request.resolver_match.url_name %}bg-indigo-700 text-white shadow-md{% else %}text-indigo-200 hover:bg-indigo-800 hover:text-white{% endif %}">
                     <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                     Assessment Types
                 </a>
+                {% endif %}
                 {# NEW: Course Link #}
+                {% if user.profile.role == 'ADMIN' or user.profile.role == 'HOD' %}
                 <a href="{% url 'course_list' %}"
                    class="flex items-center px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg text-sm sm:text-base font-medium transition duration-200
                            {% if 'course_list' == request.resolver_match.url_name or 'course_create' == request.resolver_match.url_name or 'course_update' in request.resolver_match.url_name or 'course_delete' in request.resolver_match.url_name %}bg-indigo-700 text-white shadow-md{% else %}text-indigo-200 hover:bg-indigo-800 hover:text-white{% endif %}">
                     <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13.438m0-13.438a4.5 4.5 0 100-9 4.5 4.5 0 000 9zm-7.5 0h15M12 6.253c1.867 0 3.682.525 5.176 1.426L22 4m-4 8a2 2 0 11-4 0 2 2 0 014 0zm-7.5 0h15"></path></svg>
                     Courses
                 </a>
+                {% endif %}
                 {# NEW: Course Outcomes Link #}
+                {% if user.profile.role == 'ADMIN' or user.profile.role == 'HOD' or user.profile.role == 'FACULTY' %}
                 <a href="{% url 'course_outcome_list' %}"
                    class="flex items-center px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg text-sm sm:text-base font-medium transition duration-200
                            {% if 'course_outcome' in request.resolver_match.url_name %}bg-indigo-700 text-white shadow-md{% else %}text-indigo-200 hover:bg-indigo-800 hover:text-white{% endif %}">
                     <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
                     Course Outcomes
                 </a>
+                {% endif %}
                 {# NEW: Assessments Link #}
+                {% if user.is_superuser or user.profile.role == 'ADMIN' or user.profile.role == 'HOD' or user.profile.role == 'FACULTY' %}
                 <a href="{% url 'assessment_list' %}"
                    class="flex items-center px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg text-sm sm:text-base font-medium transition duration-200
                            {% if 'assessment_' in request.resolver_match.url_name and 'assessment_type' not in request.resolver_match.url_name %}bg-indigo-700 text-white shadow-md{% else %}text-indigo-200 hover:bg-indigo-800 hover:text-white{% endif %}">
                     <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
                     Assessments
                 </a>
+                {% endif %}
                 {# NEW: Calculate Attainment Link #}
+                {% if user.profile.role == 'ADMIN' or user.profile.role == 'HOD' %}
                 <a href="{% url 'calculate_attainment_view' %}"
                    class="flex items-center px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg text-sm sm:text-base font-medium transition duration-200
                            {% if 'calculate_attainment' in request.resolver_match.url_name %}bg-indigo-700 text-white shadow-md{% else %}text-indigo-200 hover:bg-indigo-800 hover:text-white{% endif %}">
                     <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
                     Calculate Attainment
                 </a>
+                {% endif %}
                 {# NEW: Attainment Reports Group #}
+                {% if user.is_superuser or user.profile.role == 'ADMIN' or user.profile.role == 'HOD' or user.profile.role == 'FACULTY' %}
                 <div class="px-3 sm:px-4 pt-4 text-xs sm:text-sm font-semibold text-indigo-400 uppercase tracking-wider">
                     Attainment Reports
                 </div>
@@ -362,6 +415,7 @@
                     <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c1.558 0 3.093.048 4.606.145M12 8a7.964 7.964 0 00-2.348.608M12 8a7.964 7.964 0 012.348.608M9 17.25c.42.062.842.098 1.27.106M9 17.25a6.002 6.002 0 00-2.502-.377c-2.377-.502-4.14-.5-4.14-.5h-.001V12.75a.75.75 0 01.75-.75h3.582a3 3 0 001.309-3.774M15 17.25c-.42.062-.842.098-1.27.106m1.27-.106a6.002 6.002 0 012.502-.377c2.377-.502 4.14-.5 4.14-.5h.001V12.75a.75.75 0 00-.75-.75H17.25a3 3 0 01-1.309-3.774M12 8a9.002 9.002 0 00-2.032-.267M12 8a9.002 9.002 0 012.032-.267M9 17.25c-.42.062-.842.098-1.27.106M9 17.25a6.002 6.002 0 00-2.502-.377c-2.377-.502-4.14-.5-4.14-.5h-.001V12.75a.75.75 0 01.75-.75h3.582a3 3 0 001.309-3.774M15 17.25c-.42.062-.842.098-1.27.106m1.27-.106a6.002 6.002 0 012.502-.377c2.377-.502 4.14-.5 4.14-.5h.001V12.75a.75.75 0 00-.75-.75H17.25a3 3 0 01-1.309-3.774M12 8a9.002 9.002 0 00-2.032-.267"></path></svg>
                     PO Attainment
                 </a>
+                {% endif %}
             </nav>
         </aside>
 
