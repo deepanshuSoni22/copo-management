@@ -10,6 +10,9 @@ from django.db.models import Sum, F, ExpressionWrapper, DecimalField
 from django.db import transaction # For atomic operations
 from django.contrib.auth.models import User # <--- ADD THIS LINE
 from users.models import UserProfile, UserRole # Import UserProfile from the users app
+import csv # Import the csv module for CSV export
+from django.http import HttpResponse # Import HttpResponse for serving files
+
 
 
 # --- User Role Check Helper Functions ---
@@ -1066,3 +1069,65 @@ def student_personal_attainment_view(request):
     }
     return render(request, 'academics/student_attainment_report.html', context)
 
+
+# --- Data Export Views ---
+
+@login_required
+@user_passes_test(is_admin_or_hod_or_faculty, login_url='/accounts/login/')
+def export_co_attainment_csv(request):
+    selected_academic_year_id = request.GET.get('academic_year')
+    selected_course_id = request.GET.get('course')
+
+    co_attainments = CourseOutcomeAttainment.objects.all()
+
+    # Apply same filtering logic as in co_attainment_report_list
+    if is_faculty(request.user) and not is_admin_or_hod(request.user):
+        user_profile = request.user.profile
+        taught_courses = user_profile.taught_courses.all()
+        co_attainments = co_attainments.filter(course_outcome__course__in=taught_courses)
+
+    if selected_academic_year_id:
+        co_attainments = co_attainments.filter(academic_year__id=selected_academic_year_id)
+    if selected_course_id:
+        co_attainments = co_attainments.filter(course_outcome__course__id=selected_course_id)
+
+    co_attainments = co_attainments.select_related(
+        'course_outcome__course',
+        'course_outcome__course__department',
+        'academic_year'
+    ).order_by(
+        '-academic_year__start_date',
+        'course_outcome__course__code',
+        'course_outcome__code'
+    )
+
+    # Prepare CSV response
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="course_outcome_attainment_report.csv"'
+
+    writer = csv.writer(response)
+    
+    # Write CSV header
+    writer.writerow([
+        'Academic Year', 
+        'Course Code', 
+        'Course Name', 
+        'Department',
+        'CO Code', 
+        'CO Description', 
+        'Attainment Percentage'
+    ])
+
+    # Write data rows
+    for co_att in co_attainments:
+        writer.writerow([
+            f"{co_att.academic_year.start_date.year}-{co_att.academic_year.end_date.year}",
+            co_att.course_outcome.course.code,
+            co_att.course_outcome.course.name,
+            co_att.course_outcome.course.department.name if co_att.course_outcome.course.department else 'N/A',
+            co_att.course_outcome.code,
+            co_att.course_outcome.description,
+            f"{co_att.attainment_percentage:.2f}%" if co_att.attainment_percentage is not None else 'N/A'
+        ])
+
+    return response

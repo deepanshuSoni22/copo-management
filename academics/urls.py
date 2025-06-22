@@ -61,4 +61,6 @@ urlpatterns = [
    # Student Personal Views (NEW)
     path('my-marks/', views.student_personal_marks_view, name='student_personal_marks_view'),
     path('my-attainment/', views.student_personal_attainment_view, name='student_personal_attainment_view'), # NEW
+
+    path('export/co-attainment-csv/', views.export_co_attainment_csv, name='export_co_attainment_csv'), # NEW
 ]
