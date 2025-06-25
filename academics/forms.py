@@ -11,6 +11,7 @@ from .models import (
     AssessmentType,
     Assessment,
     StudentMark,
+    Semester
 )
 from users.models import UserProfile, UserRole  # Import UserProfile from the users app
 from django.forms import (
@@ -160,21 +161,19 @@ class CourseForm(forms.ModelForm):
         ),
         label="Department",
     )
-    academic_year = forms.ModelChoiceField(
-        queryset=AcademicYear.objects.all().order_by(
-            "-start_date"
-        ),  # Latest years first
-        empty_label="Select Academic Year",
-        required=False,
+    # Changed: academic_year field is removed, now linked via semester
+    semester = forms.ModelChoiceField( # NEW: Semester field
+        queryset=Semester.objects.all().select_related('academic_department__academic_year').order_by('-academic_department__academic_year__start_date', 'order'),
+        empty_label="Select Semester",
+        required=False, # Make it optional initially if course can exist without semester
         widget=forms.Select(
             attrs={
                 "class": "mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base"
             }
         ),
-        label="Academic Year",
+        label="Semester",
     )
-    # The 'faculty' field is a ManyToMany, so ModelForm by default uses a MultipleSelect widget.
-    # We can customize its queryset and appearance.
+    # The 'faculty' field is a ManyToMany (existing)
     faculty = forms.ModelMultipleChoiceField(
         queryset=UserProfile.objects.filter(role=UserRole.FACULTY).select_related(
             "user"
@@ -191,7 +190,8 @@ class CourseForm(forms.ModelForm):
 
     class Meta:
         model = Course
-        fields = ["name", "code", "department", "academic_year", "faculty"]
+        # Changed fields: removed academic_year, added semester
+        fields = ["name", "code", "department", "semester", "faculty"] # Use 'semester' now
         widgets = {
             "name": forms.TextInput(
                 attrs={
@@ -212,7 +212,7 @@ class CourseForm(forms.ModelForm):
             if obj.user.first_name
             else obj.user.username
         )
-
+        # No more pre-filtering based on academic_year here as it's now via semester.
 
 class CourseOutcomeForm(forms.ModelForm):
     # Customize fields with Tailwind classes

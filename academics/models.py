@@ -4,20 +4,6 @@ from users.models import UserProfile  # Import UserProfile from the users app
 from django.contrib.auth.models import User  # <--- ADD THIS LINE
 
 
-class AcademicYear(models.Model):
-    start_date = models.DateField(unique=True)
-    end_date = models.DateField(unique=True)
-    is_current = models.BooleanField(default=False)
-
-    def __str__(self):
-        return f"Academic Year: {self.start_date.year}-{self.end_date.year}"
-
-    class Meta:
-        verbose_name = "Academic Year"
-        verbose_name_plural = "Academic Years"
-        ordering = ["-start_date"]  # Order by latest academic year first
-
-
 class Department(models.Model):
     name = models.CharField(max_length=100, unique=True)
     hod = models.OneToOneField(
@@ -38,6 +24,79 @@ class Department(models.Model):
     class Meta:
         verbose_name = "Department"
         verbose_name_plural = "Departments"
+
+
+class AcademicYear(models.Model):
+    start_date = models.DateField(unique=True)
+    end_date = models.DateField(unique=True)
+    is_current = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"Academic Year: {self.start_date.year}-{self.end_date.year}"
+
+    class Meta:
+        verbose_name = "Academic Year"
+        verbose_name_plural = "Academic Years"
+        ordering = ["-start_date"]  # Order by latest academic year first
+
+
+# --- NEW: AcademicDepartment Model ---
+class AcademicDepartment(models.Model):
+    department = models.ForeignKey(
+        Department,
+        on_delete=models.CASCADE,
+        related_name='academic_departments'
+    )
+    academic_year = models.ForeignKey(
+        AcademicYear,
+        on_delete=models.CASCADE,
+        related_name='academic_departments'
+    )
+    # HOD is now assigned to an AcademicDepartment instance for a specific year
+    hod = models.OneToOneField(
+        UserProfile,
+        on_delete=models.SET_NULL,
+        related_name='academic_department_headed', # New related_name for clarity
+        null=True, blank=True,
+        limit_choices_to={'role__in': ['HOD', 'FACULTY']}, # HODs or Faculty can be HODs
+        verbose_name="Head of Department (for this Academic Year)"
+    )
+
+    def __str__(self):
+        hod_info = f" (HOD: {self.hod.user.username})" if self.hod else ""
+        return f"{self.department.name} - {self.academic_year.start_date.year}-{self.academic_year.end_date.year}{hod_info}"
+
+    class Meta:
+        verbose_name = "Academic Department"
+        verbose_name_plural = "Academic Departments"
+        # A department can only exist once per academic year
+        unique_together = ('department', 'academic_year')
+        ordering = ['-academic_year__start_date', 'department__name']
+
+
+class Semester(models.Model):
+    name = models.CharField(max_length=100, help_text="e.g., 1st Semester, Spring 2024")
+    # CHANGED: academic_year replaced by academic_department
+    academic_department = models.ForeignKey( # NEW: Link to AcademicDepartment
+        'AcademicDepartment',
+        on_delete=models.CASCADE,
+        related_name='semesters'
+    )
+    order = models.PositiveIntegerField(default=0, help_text="Order of the semester within the academic year")
+
+    def __str__(self):
+        # Update __str__ to reflect the new linkage
+        return f"{self.name} ({self.academic_department.department.name} - {self.academic_department.academic_year.start_date.year}-{self.academic_department.academic_year.end_date.year})"
+
+    class Meta:
+        verbose_name = "Semester"
+        verbose_name_plural = "Semesters"
+        # Update unique_together to use academic_department
+        unique_together = ('name', 'academic_department') # Semester name must be unique per academic_department
+        # Update ordering to use academic_department's year and order
+        ordering = ['-academic_department__academic_year__start_date', 'order']
+
+
 
 
 class ProgramOutcome(models.Model):
@@ -72,29 +131,32 @@ class Course(models.Model):
         blank=True,
     )
     # A course is usually offered in a specific academic year
-    academic_year = models.ForeignKey(
-        AcademicYear,
-        on_delete=models.CASCADE,  # If academic year is deleted, courses within it are also deleted
-        related_name="courses",
-        null=True,  # Allow courses not yet assigned to a year initially
-        blank=True,
+    # Changed: A course is now linked to a Semester
+    semester = models.ForeignKey(
+        Semester,
+        on_delete=models.CASCADE, # If semester deleted, courses within it are deleted
+        related_name='courses',
+        null=True, blank=True # Allow courses not yet assigned to a semester initially
     )
 
     def __str__(self):
-        return f"{self.code} - {self.name} ({self.department.name if self.department else 'N/A'})"
+        # Update __str__ to reflect the new semester/year linkage
+        semester_info = f" ({self.semester.name})" if self.semester else 'N/A'
+        year_info = f" ({self.semester.academic_year.start_date.year}-{self.semester.academic_year.end_date.year})" if self.semester and self.semester.academic_year else 'N/A'
+        return f"{self.code} - {self.name} {semester_info} {year_info}"
 
     class Meta:
         verbose_name = "Course"
         verbose_name_plural = "Courses"
+        # Update unique_together to use semester instead of academic_year
         unique_together = (
             "code",
-            "academic_year",
-        )  # A course code should be unique per academic year
-        ordering = [
-            "academic_year__start_date",
-            "code",
-        ]  # Order by academic year then code
+            "semester",
+        )  # A course code should be unique per semester
+        # CHANGED: Update ordering to use semester's academic_department and then academic_year
+        ordering = ["semester__academic_department__academic_year__start_date", "semester__order", "code"]
 
+        
 
 class CourseOutcome(models.Model):
     # Each CO belongs to a specific Course
