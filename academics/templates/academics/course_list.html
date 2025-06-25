@@ -40,7 +40,11 @@
                                 {{ course.department.name|default:'N/A' }}
                             </td>
                             <td class="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-default">
-                                {{ course.academic_year.start_date.year }}-{{ course.academic_year.end_date.year }}
+                                {% if course.semester and course.semester.academic_department %}
+                                    {{ course.semester.academic_department.academic_year.start_date.year }}-{{ course.semester.academic_department.academic_year.end_date.year }}
+                                {% else %}
+                                    N/A
+                                {% endif %}
                             </td>
                             <td class="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-default">
                                 {% if course.faculty.all %}
@@ -74,7 +78,12 @@
                                 {{ course.code }} - {{ course.name }}
                             </h3>
                             <p class="text-xs text-gray-default mb-2">
-                                Dept: {{ course.department.name|default:'N/A' }} | Year: {{ course.academic_year.start_date.year }}-{{ course.academic_year.end_date.year }}
+                                Dept: {{ course.department.name|default:'N/A' }} | Year: 
+                                {% if course.semester and course.semester.academic_department %}
+                                    {{ course.semester.academic_department.academic_year.start_date.year }}-{{ course.semester.academic_department.academic_year.end_date.year }}
+                                {% else %}
+                                    N/A
+                                {% endif %}
                             </p>
                             <p class="text-xs text-gray-default">
                                 Faculty: {% if course.faculty.all %}

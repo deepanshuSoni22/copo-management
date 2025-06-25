@@ -11,7 +11,8 @@ from .models import (
     AssessmentType,
     Assessment,
     StudentMark,
-    Semester
+    Semester,
+    AcademicDepartment
 )
 from users.models import UserProfile, UserRole  # Import UserProfile from the users app
 from django.forms import (
@@ -89,26 +90,71 @@ class AcademicYearForm(forms.ModelForm):
         return cleaned_data
 
 
-class DepartmentForm(forms.ModelForm):
-    # Customizing the HOD field to use a select widget for UserProfile objects
-    # This also allows for custom styling via attrs
+# --- NEW: AcademicDepartmentForm ---
+class AcademicDepartmentForm(forms.ModelForm):
+    department = forms.ModelChoiceField(
+        queryset=Department.objects.all().order_by('name'), # Order by name for selection
+        empty_label="Select Department",
+        widget=forms.Select(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base'}),
+        label='Department'
+    )
+    academic_year = forms.ModelChoiceField(
+        queryset=AcademicYear.objects.all().order_by('-start_date'), # Latest years first
+        empty_label="Select Academic Year",
+        widget=forms.Select(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:focus:border-indigo-500 sm:text-base'}),
+        label='Academic Year'
+    )
     hod = forms.ModelChoiceField(
-        queryset=UserProfile.objects.filter(role="HOD").select_related(
-            "user"
-        ),  # Only show HOD profiles
-        empty_label="No HOD assigned",  # Optional: allow no HOD
-        required=False,  # HOD assignment is optional
-        widget=forms.Select(
-            attrs={
-                "class": "mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base"
-            }
-        ),
-        label="Head of Department",
+        queryset=UserProfile.objects.filter(role__in=['HOD', 'FACULTY']).select_related('user').order_by('user__username'),
+        empty_label="No HOD assigned",
+        required=False,
+        widget=forms.Select(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base'}),
+        label='Head of Department'
     )
 
     class Meta:
+        model = AcademicDepartment
+        fields = ['department', 'academic_year', 'hod']
+        # No extra widgets needed here as fields are explicitly defined above
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Ensure the user's full name is displayed for HOD selection
+        self.fields['hod'].label_from_instance = lambda obj: f"{obj.user.first_name} {obj.user.last_name} ({obj.user.username})" if obj.user.first_name else obj.user.username
+
+    def clean(self):
+        cleaned_data = super().clean()
+        department = cleaned_data.get('department')
+        academic_year = cleaned_data.get('academic_year')
+
+        # Custom validation for unique_together constraint
+        if department and academic_year:
+            if AcademicDepartment.objects.filter(department=department, academic_year=academic_year).exclude(pk=self.instance.pk).exists():
+                self.add_error('department', 'This department is already associated with this academic year.')
+                self.add_error('academic_year', 'This academic year is already associated with this department.')
+        return cleaned_data
+
+
+class DepartmentForm(forms.ModelForm):
+    # Customizing the HOD field to use a select widget for UserProfile objects
+    # This also allows for custom styling via attrs
+    # hod = forms.ModelChoiceField(
+    #     queryset=UserProfile.objects.filter(role="HOD").select_related(
+    #         "user"
+    #     ),  # Only show HOD profiles
+    #     empty_label="No HOD assigned",  # Optional: allow no HOD
+    #     required=False,  # HOD assignment is optional
+    #     widget=forms.Select(
+    #         attrs={
+    #             "class": "mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base"
+    #         }
+    #     ),
+    #     label="Head of Department",
+    # )
+
+    class Meta:
         model = Department
-        fields = ["name", "hod"]
+        fields = ["name"]
         widgets = {
             "name": forms.TextInput(
                 attrs={
@@ -122,11 +168,11 @@ class DepartmentForm(forms.ModelForm):
         # Further filter HOD queryset in init if you want to ensure it only shows *active* HOD users if possible.
         # This is already done with limit_choices_to in the model and filter(role='HOD') in the form field.
         # Ensure the user's full name is displayed for HOD selection
-        self.fields["hod"].label_from_instance = lambda obj: (
-            f"{obj.user.first_name} {obj.user.last_name} ({obj.user.username})"
-            if obj.user.first_name
-            else obj.user.username
-        )
+        # self.fields["hod"].label_from_instance = lambda obj: (
+        #     f"{obj.user.first_name} {obj.user.last_name} ({obj.user.username})"
+        #     if obj.user.first_name
+        #     else obj.user.username
+        # )
 
 
 class ProgramOutcomeForm(forms.ModelForm):

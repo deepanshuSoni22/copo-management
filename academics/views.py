@@ -13,6 +13,7 @@ from .forms import (
     AssessmentForm,
     StudentMarkForm,
     StudentMarkFormSet,
+    AcademicDepartmentForm,
 )  # Form
 
 # Import models and forms
@@ -29,6 +30,7 @@ from .models import (
     StudentMark,
     CourseOutcomeAttainment,
     ProgramOutcomeAttainment,
+    AcademicDepartment,
 )
 from django.db.models import Sum, F, ExpressionWrapper, DecimalField
 from django.db import transaction  # For atomic operations
@@ -48,8 +50,7 @@ def is_hod(user):
 
 
 def is_faculty(user):
-    return user.is_authenticated and user.profile.role == "FACULTY"
-
+    return user.is_authenticated and user.profile.role in ['FACULTY', 'HOD']
 
 def is_student(user):
     return user.is_authenticated and user.profile.role == "STUDENT"
@@ -233,7 +234,7 @@ def academic_year_delete(request, pk):
 @login_required
 @user_passes_test(is_admin_or_hod, login_url="/accounts/login/")
 def department_list(request):
-    departments = Department.objects.all().select_related("hod__user").order_by("name")
+    departments = Department.objects.all().order_by('name')
     return render(
         request, "academics/department_list.html", {"departments": departments}
     )
@@ -291,6 +292,82 @@ def department_delete(request, pk):
     return render(
         request, "academics/department_confirm_delete.html", {"department": department}
     )
+
+
+# --- AcademicDepartment Management Views (Admin/HOD) ---
+
+@login_required
+@user_passes_test(is_admin_or_hod, login_url='/accounts/login/') # Admin or HOD can manage AcademicDepartments
+def academic_department_list(request):
+    academic_departments = AcademicDepartment.objects.all().select_related('department', 'academic_year', 'hod__user').order_by('-academic_year__start_date', 'department__name')
+    context = {
+        'academic_departments': academic_departments,
+        'form_title': 'Academic Departments',
+    }
+    return render(request, 'academics/academic_department_list.html', context)
+
+@login_required
+@user_passes_test(is_admin_or_hod, login_url='/accounts/login/')
+def academic_department_create(request):
+    if request.method == 'POST':
+        form = AcademicDepartmentForm(request.POST)
+        if form.is_valid():
+            academic_department = form.save()
+            messages.success(request, f'Academic Department "{academic_department.department.name} - {academic_department.academic_year.start_date.year}" created successfully!')
+            return redirect('academic_department_list')
+        else:
+            messages.error(request, 'Please correct the errors below.')
+    else:
+        # NEW: Check for academic_year_id in GET parameters to pre-populate
+        initial_data = {}
+        academic_year_id = request.GET.get('academic_year_id')
+        if academic_year_id:
+            try:
+                academic_year_obj = AcademicYear.objects.get(pk=academic_year_id)
+                initial_data['academic_year'] = academic_year_obj
+            except AcademicYear.DoesNotExist:
+                messages.error(request, "Selected Academic Year does not exist.")
+        
+        form = AcademicDepartmentForm(initial=initial_data) # Pass initial data to the form
+    
+    context = {
+        'form': form,
+        'form_title': 'Create New Academic Department',
+    }
+    return render(request, 'academics/academic_department_form.html', context)
+
+@login_required
+@user_passes_test(is_admin_or_hod, login_url='/accounts/login/')
+def academic_department_update(request, pk):
+    academic_department = get_object_or_404(AcademicDepartment, pk=pk)
+    if request.method == 'POST':
+        form = AcademicDepartmentForm(request.POST, instance=academic_department)
+        if form.is_valid():
+            academic_department = form.save()
+            messages.success(request, f'Academic Department "{academic_department.department.name} - {academic_department.academic_year.start_date.year}" updated successfully!')
+            return redirect('academic_department_list')
+        else:
+            messages.error(request, 'Please correct the errors below.')
+    else:
+        form = AcademicDepartmentForm(instance=academic_department)
+    context = {
+        'form': form,
+        'form_title': f'Update Academic Department: {academic_department.department.name} - {academic_department.academic_year.start_date.year}',
+    }
+    return render(request, 'academics/academic_department_form.html', context)
+
+@login_required
+@user_passes_test(is_admin_or_hod, login_url='/accounts/login/')
+def academic_department_delete(request, pk):
+    academic_department = get_object_or_404(AcademicDepartment, pk=pk)
+    if request.method == 'POST':
+        academic_department.delete()
+        messages.success(request, f'Academic Department "{academic_department.department.name} - {academic_department.academic_year.start_date.year}" deleted successfully!')
+        return redirect('academic_department_list')
+    context = {
+        'academic_department': academic_department,
+    }
+    return render(request, 'academics/academic_department_confirm_delete.html', context)
 
 
 # --- Program Outcome Management Views ---
@@ -370,12 +447,7 @@ def program_outcome_delete(request, pk):
 @user_passes_test(is_admin_or_hod, login_url="/accounts/login/")
 def course_list(request):
     # Prefetch related data for efficiency
-    courses = (
-        Course.objects.all()
-        .select_related("department", "academic_year")
-        .prefetch_related("faculty__user")
-        .order_by("code")
-    )
+    courses = Course.objects.all().select_related('department', 'semester__academic_department__academic_year').prefetch_related('faculty__user').order_by('code')
     return render(request, "academics/course_list.html", {"courses": courses})
 
 

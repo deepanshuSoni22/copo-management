@@ -34,42 +34,56 @@ def is_admin(user):
 
 
 @login_required
-@user_passes_test(is_admin, login_url="/accounts/login/")  # Only Admin can manage users
+@user_passes_test(is_admin, login_url='/accounts/login/')
 def user_list(request):
-    users = User.objects.all().select_related("profile").order_by("username")
-    # Can filter by role here if desired:
-    # role_filter = request.GET.get('role')
-    # if role_filter:
-    #    users = users.filter(profile__role=role_filter)
+    # Get all users with their profiles
+    users = User.objects.all().select_related('profile').order_by('username')
+    
+    # NEW: Filter by role based on GET parameter
+    selected_role = request.GET.get('role', '') # Default to empty string (all roles)
+
+    if selected_role:
+        # If 'All' is selected, don't filter. Otherwise, filter by the selected role.
+        if selected_role != 'ALL':
+            users = users.filter(profile__role=selected_role)
+    
     context = {
-        "users": users,
-        "form_title": "User Management",
-        "roles": UserRole.choices,  # Pass roles for filter options if needed
+        'users': users,
+        'form_title': 'User Management',
+        'user_roles': UserRole.choices, # Pass all UserRole choices to the template
+        'selected_role': selected_role, # Pass the currently selected role for dropdown
     }
-    return render(request, "users/user_list.html", context)
+    return render(request, 'users/user_list.html', context)
 
 
 @login_required
-@user_passes_test(is_admin, login_url="/accounts/login/")  # Only Admin
+@user_passes_test(is_admin, login_url='/accounts/login/')
 def user_create(request):
-    if request.method == "POST":
+    # NEW: Determine the default role from GET parameter or default to Student
+    initial_role = request.GET.get('role', UserRole.STUDENT) # Default to STUDENT
+
+    if request.method == 'POST':
         form = UserCreateForm(request.POST)
         if form.is_valid():
             user = form.save()
-            messages.success(
-                request,
-                f"User '{user.username}' created successfully with role '{user.profile.get_role_display()}'!",
-            )
-            return redirect("user_list")
+            messages.success(request, f"User '{user.username}' created successfully with role '{user.profile.get_role_display()}'!")
+            return redirect('user_list')
         else:
-            messages.error(request, "Please correct the errors below.")
+            messages.error(request, 'Please correct the errors below.')
     else:
-        form = UserCreateForm()
+        # Pass initial role to the form
+        form = UserCreateForm(initial={'role': initial_role}) # Pre-set the role in the form
+    
+    # NEW: Dynamically set the form_title based on the role
+    role_display_name = dict(UserRole.choices).get(initial_role, 'User') # Get readable role name
+    form_heading = f'Create {role_display_name}'
+
     context = {
-        "form": form,
-        "form_title": "Create New User",
+        'form': form,
+        'form_title': form_heading, # Use dynamic heading
+        'initial_role': initial_role, # Pass to template for locking/display
     }
-    return render(request, "users/user_form.html", context)
+    return render(request, 'users/user_form.html', context)
 
 
 @login_required

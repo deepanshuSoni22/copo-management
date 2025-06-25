@@ -6,17 +6,17 @@ from django.contrib.auth.models import User  # <--- ADD THIS LINE
 
 class Department(models.Model):
     name = models.CharField(max_length=100, unique=True)
-    hod = models.OneToOneField(
-        UserProfile,
-        on_delete=models.SET_NULL,  # If HOD is deleted, department remains but HOD field becomes null
-        related_name="headed_department",
-        null=True,
-        blank=True,
-        limit_choices_to={
-            "role__in": ["HOD", "FACULTY"]
-        },  # This will show both HODs and Faculty
-        verbose_name="Head of Department",
-    )
+    # hod = models.OneToOneField(
+    #     UserProfile,
+    #     on_delete=models.SET_NULL,  # If HOD is deleted, department remains but HOD field becomes null
+    #     related_name="headed_department",
+    #     null=True,
+    #     blank=True,
+    #     limit_choices_to={
+    #         "role__in": ["HOD", "FACULTY"]
+    #     },  # This will show both HODs and Faculty
+    #     verbose_name="Head of Department",
+    # )
 
     def __str__(self):
         return self.name
@@ -78,9 +78,11 @@ class Semester(models.Model):
     name = models.CharField(max_length=100, help_text="e.g., 1st Semester, Spring 2024")
     # CHANGED: academic_year replaced by academic_department
     academic_department = models.ForeignKey( # NEW: Link to AcademicDepartment
-        'AcademicDepartment',
+        AcademicDepartment,
         on_delete=models.CASCADE,
-        related_name='semesters'
+        related_name='semesters',
+        null=True, 
+        blank=True
     )
     order = models.PositiveIntegerField(default=0, help_text="Order of the semester within the academic year")
 
@@ -140,10 +142,15 @@ class Course(models.Model):
     )
 
     def __str__(self):
-        # Update __str__ to reflect the new semester/year linkage
-        semester_info = f" ({self.semester.name})" if self.semester else 'N/A'
-        year_info = f" ({self.semester.academic_year.start_date.year}-{self.semester.academic_year.end_date.year})" if self.semester and self.semester.academic_year else 'N/A'
+        if self.semester and self.semester.academic_department and self.semester.academic_department.academic_year:
+            year = self.semester.academic_department.academic_year
+            year_info = f" ({year.start_date.year}-{year.end_date.year})"
+            semester_info = f" ({self.semester.name})"
+        else:
+            year_info = 'N/A'
+            semester_info = 'N/A'
         return f"{self.code} - {self.name} {semester_info} {year_info}"
+
 
     class Meta:
         verbose_name = "Course"

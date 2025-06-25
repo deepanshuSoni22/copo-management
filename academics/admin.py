@@ -62,24 +62,20 @@ class SemesterAdmin(admin.ModelAdmin):
 # --- Department Admin ---
 @admin.register(Department)
 class DepartmentAdmin(admin.ModelAdmin):
-    list_display = ("name", "get_hod_username", "get_hod_role")
-    search_fields = ("name", "hod__user__username")
-    raw_id_fields = (
-        "hod",
-    )  # Use a raw ID field for HOD for easier selection if many users
-    autocomplete_fields = [
-        "hod"
-    ]  # For better UX with raw_id_fields (requires search_fields on UserProfile admin if custom)
+    list_display = ("name",)
+    search_fields = ("name",)
+    raw_id_fields = ()  # Use a raw ID field for HOD for easier selection if many users
+    autocomplete_fields = []  # For better UX with raw_id_fields (requires search_fields on UserProfile admin if custom)
 
-    def get_hod_username(self, obj):
-        return obj.hod.user.username if obj.hod else "N/A"
+    # def get_hod_username(self, obj):
+    #     return obj.hod.user.username if obj.hod else "N/A"
 
-    get_hod_username.short_description = "HOD Username"
+    # get_hod_username.short_description = "HOD Username"
 
-    def get_hod_role(self, obj):
-        return obj.hod.get_role_display() if obj.hod else "N/A"
+    # def get_hod_role(self, obj):
+    #     return obj.hod.get_role_display() if obj.hod else "N/A"
 
-    get_hod_role.short_description = "HOD Role"
+    # get_hod_role.short_description = "HOD Role"
 
 
 # --- Program Outcome Admin ---
