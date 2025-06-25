@@ -542,11 +542,46 @@ def program_outcome_delete(request, pk):
 @user_passes_test(is_admin_or_hod, login_url='/accounts/login/')
 def course_list(request):
     # Prefetch related data for efficiency
-    # Updated select_related path to reflect new hierarchy
-    courses = Course.objects.all().select_related('department', 'semester__academic_department__academic_year').prefetch_related('faculty__user').order_by('semester__academic_department__academic_year__start_date', 'semester__order', 'code') # Aligned ordering
+    courses = Course.objects.all().select_related('department', 'semester__academic_department__academic_year').prefetch_related('faculty__user').order_by('semester__academic_department__academic_year__start_date', 'semester__order', 'code')
+
+    # NEW: Get all semesters and departments for filter dropdowns
+    semesters = Semester.objects.all().select_related('academic_department__department', 'academic_department__academic_year').order_by('-academic_department__academic_year__start_date', 'order')
+    departments = Department.objects.all().order_by('name')
+
+    # NEW: Apply filters based on GET parameters and user role
+    selected_semester_id = request.GET.get('semester')
+    selected_department_id = request.GET.get('department')
+
+    # Filter for HODs (by semester) or Admins (by department or semester)
+    if request.user.is_superuser or request.user.profile.role == 'ADMIN':
+        # Admin can filter by department OR semester
+        if selected_department_id:
+            courses = courses.filter(department__id=selected_department_id)
+        if selected_semester_id:
+            courses = courses.filter(semester__id=selected_semester_id)
+    elif request.user.profile.role == 'HOD':
+        # HOD can only filter by semesters within their department's scope
+        # First, filter courses to HOD's department
+        try:
+            hod_academic_department = AcademicDepartment.objects.get(hod=request.user.profile)
+            courses = courses.filter(semester__academic_department=hod_academic_department)
+        except AcademicDepartment.DoesNotExist:
+            courses = Course.objects.none() # If HOD not assigned to dept, show no courses
+            messages.warning(request, "Your HOD profile is not assigned to an Academic Department. No courses displayed.")
+        
+        # Then apply semester filter if selected
+        if selected_semester_id:
+            courses = courses.filter(semester__id=selected_semester_id)
+    # Faculty and Student users will see their specific course lists as defined elsewhere, if applicable.
+    # For this view, they are filtered by is_admin_or_hod decorator, so only Admin/HOD reach here.
+
     context = {
         'courses': courses,
-        'form_title': 'Courses', # Pass form_title for template consistency
+        'form_title': 'Courses',
+        'semesters': semesters, # Pass all semesters for filter dropdown
+        'departments': departments, # Pass all departments for filter dropdown
+        'selected_semester_id': selected_semester_id, # Pass selected ID to pre-select dropdown
+        'selected_department_id': selected_department_id, # Pass selected ID to pre-select dropdown
     }
     return render(request, 'academics/course_list.html', context)
 
