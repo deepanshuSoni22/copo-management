@@ -852,6 +852,10 @@ video {
   height: 100vh;
 }
 
+.max-h-72{
+  max-height: 18rem;
+}
+
 .min-h-screen{
   min-height: 100vh;
 }
@@ -967,6 +971,10 @@ video {
 
 .transform{
   transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+}
+
+.cursor-pointer{
+  cursor: pointer;
 }
 
 .resize{
@@ -1960,6 +1968,11 @@ video {
 
 .focus\:ring-offset-2:focus{
   --tw-ring-offset-width: 2px;
+}
+
+.peer:checked ~ .peer-checked\:bg-indigo-100{
+  --tw-bg-opacity: 1;
+  background-color: rgb(224 231 255 / var(--tw-bg-opacity, 1));
 }
 
 @media (min-width: 640px){

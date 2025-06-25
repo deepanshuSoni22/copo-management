@@ -50,7 +50,7 @@
                 </a>
                 {% endif %}
                 {# NEW: Department Link #}
-                {% if user.is_superuser or user.profile.role == 'ADMIN' or user.profile.role == 'HOD' %}
+                {% if user.is_superuser or user.profile.role == 'ADMIN' %}
                 <a href="{% url 'department_list' %}"
                    class="flex items-center px-3 lg:px-4 py-2 rounded-lg text-xs lg:text-sm font-medium transition duration-200
                     {% if request.resolver_match.url_name == 'department_list' %} bg-indigo-700 text-white shadow-md{% else %}text-indigo-200 hover:bg-indigo-800 hover:text-white{% endif %}">
@@ -226,7 +226,7 @@
                 </a>
                 {% endif %}
                 {# NEW: Department Link #}
-                {% if user.is_superuser or user.profile.role == 'ADMIN' or user.profile.role == 'HOD' %}
+                {% if user.is_superuser or user.profile.role == 'ADMIN' %}
                 <a href="{% url 'department_list' %}"
                    title="Departments"
                    class="flex items-center justify-center p-3 rounded-lg transition duration-200
@@ -402,7 +402,7 @@
                 </a>
                 {% endif %}
                 {# NEW: Department Link #}
-                {% if user.is_superuser or user.profile.role == 'ADMIN' or user.profile.role == 'HOD' %}
+                {% if user.is_superuser or user.profile.role == 'ADMIN' %}
                 <a href="{% url 'department_list' %}"
                    class="flex items-center px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg text-sm sm:text-base font-medium transition duration-200
                     {% if request.resolver_match.url_name == 'department_list' %}bg-indigo-700 text-white shadow-md{% else %}text-indigo-200 hover:bg-indigo-800 hover:text-white{% endif %}">
