@@ -392,9 +392,22 @@ def academic_department_delete(request, pk):
 @user_passes_test(is_admin_or_hod, login_url='/accounts/login/') # Admin or HOD can manage Semesters
 def semester_list(request):
     semesters = Semester.objects.all().select_related('academic_department__department', 'academic_department__academic_year').order_by('-academic_department__academic_year__start_date', 'order')
+
+    # NEW: Get all departments for filter dropdown
+    departments = Department.objects.all().order_by('name')
+
+    # NEW: Apply filter by department if selected by Admin
+    selected_department_id = request.GET.get('department') # Get selected department ID from GET param
+
+    if selected_department_id:
+        # Filter semesters by the selected department (through AcademicDepartment)
+        semesters = semesters.filter(academic_department__department__id=selected_department_id)
+
     context = {
         'semesters': semesters,
         'form_title': 'Semesters',
+        'departments': departments, # Pass departments for the filter dropdown
+        'selected_department_id': selected_department_id, # Pass selected ID to pre-select dropdown
     }
     return render(request, 'academics/semester_list.html', context)
 
