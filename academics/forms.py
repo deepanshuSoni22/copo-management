@@ -255,44 +255,53 @@ class CourseForm(forms.ModelForm):
     )
     # The 'faculty' field is a ManyToMany (existing)
     faculty = forms.ModelMultipleChoiceField(
-        queryset=UserProfile.objects.filter(role=UserRole.FACULTY).select_related(
-            "user"
-        ),
-        widget=forms.SelectMultiple(
-            attrs={
-                "class": "mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base h-32"
-            }
-        ),  # Increased height for multiple selection
-        label="Assigned Faculty",
+    queryset=UserProfile.objects.filter(role__in=[UserRole.FACULTY, UserRole.HOD]).select_related("user"),
+    widget=forms.CheckboxSelectMultiple(
+        attrs={
+            "class": "faculty-checkbox-list"  # We'll style this with CSS
+        }
+    ),
+    label="Assigned Faculty",
+    required=False,
+    help_text="Select all faculty members assigned to teach this course.",
+    )
+
+    assesses_cos = forms.ModelMultipleChoiceField(
+        queryset=CourseOutcome.objects.none(),  # Set dynamically in __init__
         required=False,
-        help_text="Hold Ctrl/Cmd to select multiple faculty.",
+        widget=forms.CheckboxSelectMultiple(
+            attrs={"class": "co-checkbox-list"}
+        ),
+        label="Assessed Course Outcomes",
+        help_text="Select which Course Outcomes this course assesses.",
     )
 
     class Meta:
         model = Course
-        # Changed fields: removed academic_year, added semester
-        fields = ["name", "code", "department", "semester", "faculty"] # Use 'semester' now
+        # FIX: Add 'assesses_cos' back to the fields list
+        fields = ["name", "code", "department", "semester", "faculty", "assesses_cos"] # <-- ADD "assesses_cos" here
         widgets = {
             "name": forms.TextInput(
                 attrs={
-                    "class": "mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base"
+                    "class": "mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:focus:border-indigo-500 sm:text-base"
                 }
             ),
             "code": forms.TextInput(
                 attrs={
-                    "class": "mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base"
+                    "class": "mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:focus:border-indigo-500 sm:text-base"
                 }
             ),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["faculty"].label_from_instance = lambda obj: (
-            f"{obj.user.first_name} {obj.user.last_name} ({obj.user.username})"
-            if obj.user.first_name
-            else obj.user.username
-        )
-        # No more pre-filtering based on academic_year here as it's now via semester.
+        if self.instance and self.instance.semester:
+            self.fields["assesses_cos"].queryset = CourseOutcome.objects.filter(
+                course__semester=self.instance.semester
+            ).order_by("code")
+        else:
+            self.fields["assesses_cos"].queryset = CourseOutcome.objects.none()
+
 
 class CourseOutcomeForm(forms.ModelForm):
     # Customize fields with Tailwind classes

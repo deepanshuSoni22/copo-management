@@ -526,56 +526,88 @@ def program_outcome_delete(request, pk):
 
 
 @login_required
-@user_passes_test(is_admin_or_hod, login_url="/accounts/login/")
+@user_passes_test(is_admin_or_hod, login_url='/accounts/login/')
 def course_list(request):
     # Prefetch related data for efficiency
-    courses = Course.objects.all().select_related('department', 'semester__academic_department__academic_year').prefetch_related('faculty__user').order_by('code')
-    return render(request, "academics/course_list.html", {"courses": courses})
+    # Updated select_related path to reflect new hierarchy
+    courses = Course.objects.all().select_related('department', 'semester__academic_department__academic_year').prefetch_related('faculty__user').order_by('semester__academic_department__academic_year__start_date', 'semester__order', 'code') # Aligned ordering
+    context = {
+        'courses': courses,
+        'form_title': 'Courses', # Pass form_title for template consistency
+    }
+    return render(request, 'academics/course_list.html', context)
 
 
 @login_required
-@user_passes_test(is_admin_or_hod, login_url="/accounts/login/")
+@user_passes_test(is_admin_or_hod, login_url='/accounts/login/')
 def course_create(request):
-    if request.method == "POST":
+    # NEW: Check for semester_id in GET parameters to pre-populate
+    initial_data = {}
+    semester_id = request.GET.get('semester_id')
+    if semester_id:
+        try:
+            semester_obj = Semester.objects.get(pk=semester_id)
+            initial_data['semester'] = semester_obj
+        except Semester.DoesNotExist:
+            messages.error(request, "Selected Semester does not exist.")
+
+    if request.method == 'POST':
         form = CourseForm(request.POST)
         if form.is_valid():
             course = form.save()
-            messages.success(
-                request, f'Course "{course.code} - {course.name}" created successfully!'
-            )
-            return redirect("course_list")
+            messages.success(request, f'Course "{course.code} - {course.name}" created successfully!')
+            return redirect('course_list')
         else:
-            messages.error(request, "Please correct the errors below.")
+            messages.error(request, 'Please correct the errors below.')
     else:
-        form = CourseForm()
-    return render(
-        request,
-        "academics/course_form.html",
-        {"form": form, "form_title": "Create New Course"},
-    )
+        form = CourseForm(initial=initial_data) # Pass initial data to the form
+
+    context = {
+        'form': form,
+        'form_title': 'Create New Course',
+    }
+    return render(request, 'academics/course_form.html', context)
 
 
 @login_required
-@user_passes_test(is_admin_or_hod, login_url="/accounts/login/")
+@user_passes_test(is_admin_or_hod, login_url='/accounts/login/')
 def course_update(request, pk):
     course = get_object_or_404(Course, pk=pk)
-    if request.method == "POST":
+
+    # Permission check (existing code)
+    if is_faculty(request.user) and not is_admin_or_hod(request.user):
+        # This check uses course.semester.academic_department.hod implicitly via taught_courses
+        if course not in request.user.profile.taught_courses.all():
+            messages.error(request, 'You do not have permission to update this Course.')
+            return redirect('course_list')
+
+    if request.method == 'POST':
         form = CourseForm(request.POST, instance=course)
         if form.is_valid():
             course = form.save()
-            messages.success(
-                request, f'Course "{course.code} - {course.name}" updated successfully!'
-            )
-            return redirect("course_list")
+            messages.success(request, f'Course "{course.code} - {course.name}" updated successfully!')
+            return redirect('course_list')
         else:
-            messages.error(request, "Please correct the errors below.")
+            messages.error(request, 'Please correct the errors below.')
     else:
         form = CourseForm(instance=course)
-    return render(
-        request,
-        "academics/course_form.html",
-        {"form": form, "form_title": "Update Course"},
-    )
+        # Prefilter course choices for faculty users (existing logic)
+        if is_faculty(request.user) and not is_admin_or_hod(request.user):
+            form.fields['course'].queryset = request.user.profile.taught_courses.all().order_by('code')
+
+        # FIX: Filter assesses_cos queryset based on the instance's course via semester
+        if course.semester: # Check if semester is assigned
+            form.fields['assesses_cos'].queryset = CourseOutcome.objects.filter(
+                course__semester=course.semester # Filter by course's semester
+            ).order_by('code')
+        else: # If course has no semester assigned yet, show all COs or none
+            form.fields['assesses_cos'].queryset = CourseOutcome.objects.none() # Show no COs if no semester
+
+    context = {
+        'form': form,
+        'form_title': 'Update Course',
+    }
+    return render(request, 'academics/course_form.html', context)
 
 
 @login_required
