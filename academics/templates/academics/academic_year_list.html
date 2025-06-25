@@ -33,7 +33,7 @@
                         {% for year in academic_years %}
                         <tr class="hover:bg-light-gray-bg transition duration-150 ease-in-out">
                             <td class="px-4 lg:px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ year.start_date|date:"F j, Y" }}</td>
-                            <td class="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-default">{{ year.end_date|date:"F j, Y" }}</td>
+                            <td class="px-4 lg:px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ year.end_date|date:"F j, Y" }}</td>
                             <td class="px-4 lg:px-6 py-4 whitespace-nowrap">
                                 {% if year.is_current %}
                                     <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">

@@ -90,6 +90,40 @@ class AcademicYearForm(forms.ModelForm):
         return cleaned_data
 
 
+# --- NEW: SemesterForm ---
+class SemesterForm(forms.ModelForm):
+    name = forms.CharField(
+        widget=forms.TextInput(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base'}),
+        label='Semester Name'
+    )
+    academic_department = forms.ModelChoiceField(
+        queryset=AcademicDepartment.objects.all().select_related('department', 'academic_year').order_by('-academic_year__start_date', 'department__name'),
+        empty_label="Select Academic Department",
+        widget=forms.Select(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base'}),
+        label='Academic Department'
+    )
+    order = forms.IntegerField(
+        widget=forms.NumberInput(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:focus:border-indigo-500 sm:text-base'}),
+        label='Order in Year'
+    )
+
+    class Meta:
+        model = Semester
+        fields = ['name', 'academic_department', 'order']
+        # No extra widgets defined here, as it uses defaults or individual field widgets.
+
+    def clean(self):
+        cleaned_data = super().clean()
+        name = cleaned_data.get('name')
+        academic_department = cleaned_data.get('academic_department')
+
+        # Ensure unique_together constraint is handled properly in UI feedback
+        if name and academic_department:
+            if Semester.objects.filter(name=name, academic_department=academic_department).exclude(pk=self.instance.pk).exists():
+                self.add_error('name', f"A semester named '{name}' already exists for this Academic Department.")
+        return cleaned_data
+
+
 # --- NEW: AcademicDepartmentForm ---
 class AcademicDepartmentForm(forms.ModelForm):
     department = forms.ModelChoiceField(

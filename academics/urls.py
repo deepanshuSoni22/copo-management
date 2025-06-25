@@ -21,6 +21,13 @@ urlpatterns = [
     path('academic-departments/<int:pk>/update/', views.academic_department_update, name='academic_department_update'),
     path('academic-departments/<int:pk>/delete/', views.academic_department_delete, name='academic_department_delete'),
 
+     # Semester Management URLs (NEW)
+    path('semesters/', views.semester_list, name='semester_list'),
+    path('semesters/create/', views.semester_create, name='semester_create'),
+    path('semesters/<int:pk>/update/', views.semester_update, name='semester_update'),
+    path('semesters/<int:pk>/delete/', views.semester_delete, name='semester_delete'),
+
+
     # Program Outcome URLs (existing)
     path('program-outcomes/', views.program_outcome_list, name='program_outcome_list'),
     path('program-outcomes/create/', views.program_outcome_create, name='program_outcome_create'),

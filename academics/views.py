@@ -14,6 +14,7 @@ from .forms import (
     StudentMarkForm,
     StudentMarkFormSet,
     AcademicDepartmentForm,
+    SemesterForm
 )  # Form
 
 # Import models and forms
@@ -31,6 +32,7 @@ from .models import (
     CourseOutcomeAttainment,
     ProgramOutcomeAttainment,
     AcademicDepartment,
+    Semester,
 )
 from django.db.models import Sum, F, ExpressionWrapper, DecimalField
 from django.db import transaction  # For atomic operations
@@ -155,6 +157,20 @@ def home_view(request):
     # --- Student Specific Data ---
     if request.user.profile.role == "STUDENT":
         pass
+
+    # --- NEW: HOD Specific Data ---
+    if request.user.profile.role == 'HOD':
+        # Retrieve the AcademicDepartment this HOD is heading
+        # UserProfile.academic_department_headed (related_name) links to AcademicDepartment.hod
+        try:
+            hod_department_instance = AcademicDepartment.objects.select_related('department', 'academic_year').get(hod=request.user.profile)
+            context['hod_department'] = hod_department_instance
+        except AcademicDepartment.DoesNotExist:
+            context['hod_department'] = None
+            messages.warning(request, "Your HOD profile is not currently assigned to any Academic Department. Please contact an Admin.")
+        except AcademicDepartment.MultipleObjectsReturned: # Should not happen with OneToOneField
+            context['hod_department'] = None
+            messages.error(request, "Multiple Academic Departments found for your HOD profile. Data inconsistency detected!")
 
     return render(request, "home.html", context)
 
@@ -369,6 +385,72 @@ def academic_department_delete(request, pk):
     }
     return render(request, 'academics/academic_department_confirm_delete.html', context)
 
+
+# --- Semester Management Views (Admin/HOD) ---
+
+@login_required
+@user_passes_test(is_admin_or_hod, login_url='/accounts/login/') # Admin or HOD can manage Semesters
+def semester_list(request):
+    semesters = Semester.objects.all().select_related('academic_department__department', 'academic_department__academic_year').order_by('-academic_department__academic_year__start_date', 'order')
+    context = {
+        'semesters': semesters,
+        'form_title': 'Semesters',
+    }
+    return render(request, 'academics/semester_list.html', context)
+
+@login_required
+@user_passes_test(is_admin_or_hod, login_url='/accounts/login/')
+def semester_create(request):
+    if request.method == 'POST':
+        form = SemesterForm(request.POST)
+        if form.is_valid():
+            semester = form.save()
+            messages.success(request, f'Semester "{semester.name}" for {semester.academic_department.department.name} - {semester.academic_department.academic_year.start_date.year} created successfully!')
+            return redirect('semester_list')
+        else:
+            messages.error(request, 'Please correct the errors below.')
+    else:
+        form = SemesterForm()
+    
+    context = {
+        'form': form,
+        'form_title': 'Create New Semester',
+    }
+    return render(request, 'academics/semester_form.html', context)
+
+@login_required
+@user_passes_test(is_admin_or_hod, login_url='/accounts/login/')
+def semester_update(request, pk):
+    semester = get_object_or_404(Semester, pk=pk)
+    if request.method == 'POST':
+        form = SemesterForm(request.POST, instance=semester)
+        if form.is_valid():
+            semester = form.save()
+            messages.success(request, f'Semester "{semester.name}" for {semester.academic_department.department.name} - {semester.academic_department.academic_year.start_date.year} updated successfully!')
+            return redirect('semester_list')
+        else:
+            messages.error(request, 'Please correct the errors below.')
+    else:
+        form = SemesterForm(instance=semester)
+    
+    context = {
+        'form': form,
+        'form_title': f'Update Semester: {semester.name}',
+    }
+    return render(request, 'academics/semester_form.html', context)
+
+@login_required
+@user_passes_test(is_admin_or_hod, login_url='/accounts/login/')
+def semester_delete(request, pk):
+    semester = get_object_or_404(Semester, pk=pk)
+    if request.method == 'POST':
+        semester.delete()
+        messages.success(request, f'Semester "{semester.name}" deleted successfully!')
+        return redirect('semester_list')
+    context = {
+        'semester': semester,
+    }
+    return render(request, 'academics/semester_confirm_delete.html', context)
 
 # --- Program Outcome Management Views ---
 
