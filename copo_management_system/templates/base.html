@@ -554,8 +554,11 @@
                 {% if messages %}
                     <div class="mb-4 sm:mb-6">
                         {% for message in messages %}
-                            <div class="p-3 sm:p-4 mb-3 sm:mb-4 rounded-lg text-xs sm:text-sm border
-                                        {% if message.tags == 'success' %}bg-green-100 text-green-800 border-green-200{% elif message.tags == 'error' %}bg-red-100 text-red-800 border-red-200{% elif message.tags == 'warning' %}bg-yellow-100 text-yellow-800 border-yellow-200{% else %}bg-blue-100 text-blue-800 border-blue-200{% endif %}">
+                            <div class="django-message p-3 sm:p-4 mb-3 sm:mb-4 rounded-lg text-xs sm:text-sm border
+                                        {% if message.tags == 'success' %}bg-green-100 text-green-800 border-green-200
+                                        {% elif message.tags == 'error' %}bg-red-100 text-red-800 border-red-200
+                                        {% elif message.tags == 'warning' %}bg-yellow-100 text-yellow-800 border-yellow-200
+                                        {% else %}bg-blue-100 text-blue-800 border-blue-200{% endif %}">
                                 {{ message }}
                             </div>
                         {% endfor %}
@@ -580,14 +583,14 @@
     {% block extra_js %}
     <script>
         setTimeout(function () {
-          const alerts = document.querySelectorAll('.bg-green-100, .bg-red-100, .bg-yellow-100, .bg-blue-100');
-          alerts.forEach(function (alert) {
-            alert.style.transition = "opacity 0.5s ease-out";
-            alert.style.opacity = '0';
-            setTimeout(() => alert.remove(), 500); // clean up space after fade
-          });
-        }, 1000);  // change delay as needed (1500ms = 1.5seconds)
-    </script>      
+            const alerts = document.querySelectorAll('.django-message');
+            alerts.forEach(function (alert) {
+                alert.style.transition = "opacity 0.3s ease-out";
+                alert.style.opacity = '0';
+                setTimeout(() => alert.remove(), 500);
+            });
+        }, 600);
+    </script>    
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const openMenuBtn = document.getElementById('open-mobile-menu');
