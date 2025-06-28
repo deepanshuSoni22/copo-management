@@ -92,18 +92,18 @@ class AcademicYearForm(forms.ModelForm):
 
 SEMESTER_CHOICES = [
     ('', 'Select Semester'),  # Header/placeholder
-    ('I', 'I Semester'),
-    ('II', 'II Semester'),
-    ('III', 'III Semester'),
-    ('IV', 'IV Semester'),
-    ('V', 'V Semester'),
-    ('VI', 'VI Semester'),
-    ('VII', 'VII Semester'),
-    ('VIII', 'VIII Semester'),
+    ('I Semester', 'I Semester'),
+    ('II Semester', 'II Semester'),
+    ('III Semester', 'III Semester'),
+    ('IV Semester', 'IV Semester'),
+    ('V Semester', 'V Semester'),
+    ('VI Semester', 'VI Semester'),
+    ('VII Semester', 'VII Semester'),
+    ('VIII Semester', 'VIII Semester'),
 ]
 
 class SemesterForm(forms.ModelForm):
-    name = forms.ChoiceField(
+    name = forms.ChoiceField(  # <-- Keep it as ChoiceField for dropdown + JS logic
         choices=SEMESTER_CHOICES,
         label='Semester',
         widget=forms.Select(attrs={
@@ -131,14 +131,45 @@ class SemesterForm(forms.ModelForm):
         model = Semester
         fields = ['name', 'academic_department', 'order']
 
+    def __init__(self, *args, **kwargs):
+        self.request = kwargs.pop('request', None)
+        super().__init__(*args, **kwargs)
+
+        if self.request and self.request.user.profile.role == 'HOD':
+            try:
+                hod_academic_department = AcademicDepartment.objects.get(hod=self.request.user.profile)
+                self.fields['academic_department'].initial = hod_academic_department
+                self.fields['academic_department'].queryset = AcademicDepartment.objects.filter(pk=hod_academic_department.pk)
+                self.fields['academic_department'].disabled = True
+                self.fields['academic_department'].widget.attrs['class'] += ' bg-gray-100 cursor-not-allowed'
+                self.fields['academic_department'].help_text = "Your department is pre-selected based on your HOD assignment and cannot be changed."
+            except AcademicDepartment.DoesNotExist:
+                self.fields['academic_department'].disabled = True
+                self.fields['academic_department'].queryset = AcademicDepartment.objects.none()
+                self.fields['academic_department'].help_text = "Your HOD profile is not assigned to an Academic Department."
+            except AcademicDepartment.MultipleObjectsReturned:
+                self.fields['academic_department'].disabled = True
+                self.fields['academic_department'].queryset = AcademicDepartment.objects.none()
+                self.fields['academic_department'].help_text = "Data inconsistency: HOD assigned to multiple Academic Departments."
+
     def clean(self):
         cleaned_data = super().clean()
         name = cleaned_data.get('name')
         academic_department = cleaned_data.get('academic_department')
 
-        if name and academic_department:
-            if Semester.objects.filter(name=name, academic_department=academic_department).exclude(pk=self.instance.pk).exists():
+        if self.request and self.request.user.profile.role == 'HOD' and self.fields['academic_department'].disabled:
+            try:
+                hod_academic_department = AcademicDepartment.objects.get(hod=self.request.user.profile)
+                cleaned_data['academic_department'] = hod_academic_department
+            except AcademicDepartment.DoesNotExist:
+                self.add_error('academic_department', "Associated Academic Department could not be found for your HOD profile.")
+            except AcademicDepartment.MultipleObjectsReturned:
+                self.add_error('academic_department', "Multiple Academic Departments found for your HOD profile.")
+
+        if name and 'academic_department' in cleaned_data and cleaned_data['academic_department']:
+            if Semester.objects.filter(name=name, academic_department=cleaned_data['academic_department']).exclude(pk=self.instance.pk).exists():
                 self.add_error('name', f"A semester named '{name}' already exists for this Academic Department.")
+
         return cleaned_data
 
 

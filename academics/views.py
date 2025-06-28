@@ -414,16 +414,40 @@ def semester_list(request):
 @login_required
 @user_passes_test(is_admin_or_hod, login_url='/accounts/login/')
 def semester_create(request):
+    # Determine if user is HOD and get their AcademicDepartment
+    hod_academic_department = None
+    if request.user.profile.role == 'HOD':
+        try:
+            # Assumes an HOD is assigned to one AcademicDepartment
+            hod_academic_department = AcademicDepartment.objects.get(hod=request.user.profile)
+        except AcademicDepartment.DoesNotExist:
+            messages.error(request, "Your HOD profile is not assigned to an Academic Department. Cannot create semester.")
+            return redirect('semester_list') # Redirect if HOD has no assigned department
+        except AcademicDepartment.MultipleObjectsReturned:
+            messages.error(request, "Data inconsistency: HOD assigned to multiple Academic Departments.")
+            return redirect('semester_list')
+
     if request.method == 'POST':
-        form = SemesterForm(request.POST)
+        # Pass the request object to the form, as it needs to know the user for disabling logic
+        form = SemesterForm(request.POST, request=request) 
         if form.is_valid():
-            semester = form.save()
+            semester = form.save(commit=False) # Get instance to assign academic_department if needed
+            # If HOD, ensure semester belongs to their AcademicDepartment (in case field was disabled)
+            if request.user.profile.role == 'HOD' and hod_academic_department:
+                semester.academic_department = hod_academic_department # Force assignment
+            semester.save()
+
             messages.success(request, f'Semester "{semester.name}" for {semester.academic_department.department.name} - {semester.academic_department.academic_year.start_date.year} created successfully!')
             return redirect('semester_list')
         else:
             messages.error(request, 'Please correct the errors below.')
-    else:
-        form = SemesterForm()
+    else: # GET request
+        initial_data = {}
+        if request.user.profile.role == 'HOD' and hod_academic_department:
+            initial_data['academic_department'] = hod_academic_department # Pre-select HOD's department
+        
+        # Pass initial data AND the request object to the form
+        form = SemesterForm(initial=initial_data, request=request) 
     
     context = {
         'form': form,
