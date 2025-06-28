@@ -663,23 +663,46 @@ class CoursePlanForm(forms.ModelForm):
         fields = ['title', 'description', 'course_coordinator', 'instructors']
         widgets = {
             'title': forms.TextInput(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base'}),
-            'description': forms.Textarea(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base', 'rows': 3}),
+            'description': forms.Textarea(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base', 'rows': 4}),
         }
 
+    # --- UPDATED __init__ METHOD ---
     def __init__(self, *args, **kwargs):
+        # Pop the custom permission flag from kwargs
+        can_edit = kwargs.pop('can_edit_full_plan', True) # Default to True
         super().__init__(*args, **kwargs)
+
+        # Set the labels for choice fields
         self.fields['course_coordinator'].label_from_instance = lambda obj: f"{obj.user.first_name} {obj.user.last_name} ({obj.user.username})" if obj.user.first_name else obj.user.username
         self.fields['instructors'].label_from_instance = lambda obj: f"{obj.user.first_name} {obj.user.last_name} ({obj.user.username})" if obj.user.first_name else obj.user.username
+        
+        # If the user cannot edit, disable all the fields in this form
+        if not can_edit:
+            for field_name in self.fields:
+                self.fields[field_name].disabled = True
+                self.fields[field_name].widget.attrs['class'] += ' bg-gray-100 cursor-not-allowed'
 
 
 class CourseObjectiveForm(forms.ModelForm):
+    # --- NEW: Add this __init__ method ---
+    def __init__(self, *args, **kwargs):
+        can_edit = kwargs.pop('can_edit', True)  # Default to True
+        super().__init__(*args, **kwargs)
+
+        if not can_edit:
+            for field_name in self.fields:
+                self.fields[field_name].disabled = True
+                self.fields[field_name].widget.attrs['class'] += ' bg-gray-100 cursor-not-allowed'
+
     class Meta:
         model = CourseObjective
         fields = ['order', 'unit_number', 'objective_text']
         widgets = {
             'order': forms.NumberInput(attrs={'class': 'mt-1 block w-16 px-2 py-1 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm'}),
             'unit_number': forms.TextInput(attrs={'class': 'mt-1 block w-24 px-2 py-1 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm'}),
-            'objective_text': forms.Textarea(attrs={'class': 'mt-1 block w-full px-2 py-1 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm', 'rows': 2}),
+            'objective_text': forms.Textarea(attrs={
+                'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base', 
+                'rows': 4}),
         }
 
 # Formset for Course Objectives
@@ -687,7 +710,7 @@ CourseObjectiveFormSet = inlineformset_factory(
     CoursePlan,        # Parent model
     CourseObjective,   # Child model
     form=CourseObjectiveForm,
-    extra=1,           # One empty form by default
+    extra=0,           # One empty form by default
     can_delete=True,   # Allow deleting objectives
     fields=['order', 'unit_number', 'objective_text']
 )
@@ -700,10 +723,10 @@ class WeeklyLessonPlanForm(forms.ModelForm):
         widgets = {
             'order': forms.NumberInput(attrs={'class': 'mt-1 block w-16 px-2 py-1 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm'}),
             'unit_number': forms.TextInput(attrs={'class': 'mt-1 block w-24 px-2 py-1 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm'}),
-            'unit_details': forms.Textarea(attrs={'class': 'mt-1 block w-full px-2 py-1 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm', 'rows': 3}),
-            'week_dates': forms.TextInput(attrs={'class': 'mt-1 block w-full px-2 py-1 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm', 'placeholder': 'e.g., JULY 17TH - AUG 10TH'}),
-            'pedagogy': forms.Textarea(attrs={'class': 'mt-1 block w-full px-2 py-1 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm', 'rows': 3}),
-            'references': forms.Textarea(attrs={'class': 'mt-1 block w-full px-2 py-1 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm', 'rows': 3}),
+            'unit_details': forms.Textarea(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base', 'rows': 4}),
+            'week_dates': forms.TextInput(attrs={'class': 'mt-1 block w-full px-2 py-1 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base', 'placeholder': 'e.g., JULY 17TH - AUG 10TH'}),
+            'pedagogy': forms.Textarea(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base', 'rows': 4}),
+            'references': forms.Textarea(attrs={'class': 'mt-1 block w-full px-4 py- border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base', 'rows': 4}),
         }
 
 # Formset for Weekly Lesson Plans
@@ -711,13 +734,30 @@ WeeklyLessonPlanFormSet = inlineformset_factory(
     CoursePlan,        # Parent model
     WeeklyLessonPlan,  # Child model
     form=WeeklyLessonPlanForm,
-    extra=1,           # One empty form by default
+    extra=0,           # One empty form by default
     can_delete=True,   # Allow deleting entries
     fields=['order', 'unit_number', 'unit_details', 'week_dates', 'pedagogy', 'references']
 )
 
 
 class CIAComponentForm(forms.ModelForm):
+     # --- UPDATED __init__ method ---
+    def __init__(self, *args, **kwargs):
+        # Pop the custom arguments from the kwargs
+        cos_queryset = kwargs.pop('cos_queryset', None)
+        can_edit = kwargs.pop('can_edit', True) # Add this line
+        super().__init__(*args, **kwargs)
+
+        # Apply the queryset filter if it exists
+        if cos_queryset is not None:
+            self.fields['cos_covered'].queryset = cos_queryset
+
+        # Apply the disabled logic if user cannot edit
+        if not can_edit: # Add this block
+            for field_name in self.fields:
+                self.fields[field_name].disabled = True
+                self.fields[field_name].widget.attrs['class'] += ' bg-gray-100 cursor-not-allowed'
+
     class Meta:
         model = CIAComponent
         fields = ['order', 'component_name', 'units_covered', 'cos_covered']
@@ -733,7 +773,7 @@ CIAComponentFormSet = inlineformset_factory(
     CoursePlan,     # Parent model
     CIAComponent,   # Child model
     form=CIAComponentForm,
-    extra=1,        # One empty form by default
+    extra=0,        # One empty form by default
     can_delete=True, # Allow deleting components
     fields=['order', 'component_name', 'units_covered', 'cos_covered']
 )

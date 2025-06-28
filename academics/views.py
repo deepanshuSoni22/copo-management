@@ -510,7 +510,7 @@ def semester_delete(request, pk):
 # --- CoursePlan Management Views (HOD/Admin) ---
 
 @login_required
-@user_passes_test(is_admin_or_hod, login_url='/accounts/login/')
+@user_passes_test(is_admin_or_hod_or_faculty, login_url='/accounts/login/') # ALLOW FACULTY ACCESS
 def course_plan_list(request):
     course_plans = CoursePlan.objects.all().select_related(
         'course__department',
@@ -543,7 +543,6 @@ def course_plan_list(request):
 @login_required
 @user_passes_test(is_admin_or_hod, login_url='/accounts/login/')
 def course_plan_create(request):
-    # Get Course ID from URL parameter if initiated from Course list
     course_id = request.GET.get('course_id')
     pre_selected_course = None
     if course_id:
@@ -551,30 +550,36 @@ def course_plan_create(request):
             pre_selected_course = Course.objects.get(pk=course_id)
         except Course.DoesNotExist:
             messages.error(request, "Selected Course does not exist.")
-            return redirect('course_list') # Redirect back to Course list if invalid Course
+            return redirect('course_list')
+
+    # --- NEW: Get the correct queryset for this course's outcomes ---
+    # We do this here to pass it to the formset below.
+    course_outcomes_for_this_course = CourseOutcome.objects.filter(course=pre_selected_course) if pre_selected_course else CourseOutcome.objects.none()
 
     if request.method == 'POST':
         course_plan_form = CoursePlanForm(request.POST)
         course_objective_formset = CourseObjectiveFormSet(request.POST, prefix='objectives')
         weekly_lesson_formset = WeeklyLessonPlanFormSet(request.POST, prefix='lessons')
-        cia_component_formset = CIAComponentFormSet(request.POST, prefix='cia_components')
+        # -- UPDATED: Pass form_kwargs to the formset on POST --
+        cia_component_formset = CIAComponentFormSet(
+            request.POST,
+            prefix='cia_components',
+            form_kwargs={'cos_queryset': course_outcomes_for_this_course}
+        )
 
-        if course_plan_form.is_valid() and course_objective_formset.is_valid() and weekly_lesson_formset.is_valid() and cia_component_formset.is_valid():
+        if (course_plan_form.is_valid() and
+                course_objective_formset.is_valid() and
+                weekly_lesson_formset.is_valid() and
+                cia_component_formset.is_valid()):
+            
             with transaction.atomic():
+                # Logic remains the same...
                 course_plan = course_plan_form.save(commit=False)
-                course_plan.created_by = request.user # Assign current user as creator
-
-                # If initiated from course list, ensure the Course is correctly linked.
-                # If course is part of the form's fields (e.g., if CourseForm was embedded), it would be in cleaned_data.
-                # Since Course is primary_key=True, it's implicitly part of instance, or directly set.
+                course_plan.created_by = request.user
                 if pre_selected_course:
                     course_plan.course = pre_selected_course
-                # else: If plan created standalone, form would need a course field.
-                # For now, it's assumed to be created from a Course context.
+                course_plan.save()
 
-                course_plan.save() # Save the CoursePlan first to get its ID (PK)
-
-                # Save children formsets
                 course_objective_formset.instance = course_plan
                 course_objective_formset.save()
 
@@ -588,12 +593,15 @@ def course_plan_create(request):
                 return redirect('course_plan_list')
         else:
             messages.error(request, 'Please correct the errors in the forms below.')
-    else: # GET request
-        course_plan_form = CoursePlanForm(initial={'course': pre_selected_course}) # Pre-select course in form
-        # Initialize formsets for display
+    else:  # GET request
+        course_plan_form = CoursePlanForm(initial={'course': pre_selected_course})
         course_objective_formset = CourseObjectiveFormSet(prefix='objectives')
         weekly_lesson_formset = WeeklyLessonPlanFormSet(prefix='lessons')
-        cia_component_formset = CIAComponentFormSet(prefix='cia_components')
+        # -- UPDATED: Pass form_kwargs to the formset on GET --
+        cia_component_formset = CIAComponentFormSet(
+            prefix='cia_components',
+            form_kwargs={'cos_queryset': course_outcomes_for_this_course}
+        )
     
     context = {
         'course_plan_form': course_plan_form,
@@ -601,58 +609,90 @@ def course_plan_create(request):
         'weekly_lesson_formset': weekly_lesson_formset,
         'cia_component_formset': cia_component_formset,
         'form_title': 'Create Course Plan',
-        'pre_selected_course': pre_selected_course, # Pass to template for display
+        'pre_selected_course': pre_selected_course,
+        
+        # --- FIX: Add these permission flags to the context ---
+        'can_edit_full_plan': True,
+        'can_edit_weekly_lessons': True,
     }
     return render(request, 'academics/course_plan_form.html', context)
 
 
 @login_required
-@user_passes_test(is_admin_or_hod, login_url='/accounts/login/')
+@user_passes_test(is_admin_or_hod_or_faculty, login_url='/accounts/login/')
 def course_plan_update(request, pk):
     course_plan = get_object_or_404(CoursePlan, pk=pk)
+    user_profile = request.user.profile
 
-    # Permission check: HOD can only update plans for their department
-    if request.user.profile.role == 'HOD':
+    is_hod_or_admin = user_profile.role in ['HOD', 'ADMIN'] or request.user.is_superuser
+    is_course_instructor = user_profile == course_plan.course_coordinator or user_profile in course_plan.instructors.all()
+
+    if not (is_hod_or_admin or is_course_instructor):
+        messages.error(request, "You do not have permission to update this Course Plan.")
+        return redirect('course_plan_list')
+
+    if user_profile.role == 'HOD':
         try:
-            hod_academic_department = AcademicDepartment.objects.get(hod=request.user.profile)
+            hod_academic_department = AcademicDepartment.objects.get(hod=user_profile)
             if course_plan.course.semester.academic_department != hod_academic_department:
-                messages.error(request, "You do not have permission to update this Course Plan.")
+                messages.error(request, "You can only update Course Plans for your own department.")
                 return redirect('course_plan_list')
         except AcademicDepartment.DoesNotExist:
             messages.error(request, "Your HOD profile is not assigned to an Academic Department.")
             return redirect('course_plan_list')
+            
+    course_outcomes_for_this_course = CourseOutcome.objects.filter(course=course_plan.course)
+
+    # Define the form kwargs dictionary based on permission
+    objective_and_cia_kwargs = {'can_edit': is_hod_or_admin}
+    cia_kwargs = {'cos_queryset': course_outcomes_for_this_course, 'can_edit': is_hod_or_admin}
 
     if request.method == 'POST':
-        course_plan_form = CoursePlanForm(request.POST, instance=course_plan)
-        course_objective_formset = CourseObjectiveFormSet(request.POST, instance=course_plan, prefix='objectives')
-        weekly_lesson_formset = WeeklyLessonPlanFormSet(request.POST, instance=course_plan, prefix='lessons')
-        cia_component_formset = CIAComponentFormSet(request.POST, instance=course_plan, prefix='cia_components')
+        form = CoursePlanForm(request.POST, instance=course_plan, can_edit_full_plan=is_hod_or_admin)
+        # Pass kwargs to formsets during POST as well
+        objective_formset = CourseObjectiveFormSet(request.POST, instance=course_plan, prefix='objectives', form_kwargs=objective_and_cia_kwargs)
+        lesson_formset = WeeklyLessonPlanFormSet(request.POST, instance=course_plan, prefix='lessons') # No permissions needed here
+        cia_formset = CIAComponentFormSet(request.POST, instance=course_plan, prefix='cia_components', form_kwargs=cia_kwargs)
 
-        if course_plan_form.is_valid() and course_objective_formset.is_valid() and weekly_lesson_formset.is_valid() and cia_component_formset.is_valid():
-            with transaction.atomic():
-                course_plan_form.save() # Save the main CoursePlan form
-
-                course_objective_formset.save() # Save/update/delete objectives
-                weekly_lesson_formset.save() # Save/update/delete lesson plans
-                cia_component_formset.save() # Save/update/delete CIA components
-
-                messages.success(request, f"Course Plan for '{course_plan.course.code}' updated successfully!")
-                return redirect('course_plan_list')
+        if is_hod_or_admin:
+            all_forms_valid = form.is_valid() and objective_formset.is_valid() and lesson_formset.is_valid() and cia_formset.is_valid()
         else:
-            messages.error(request, 'Please correct the errors in the forms below.')
-    else: # GET request
-        course_plan_form = CoursePlanForm(instance=course_plan)
-        course_objective_formset = CourseObjectiveFormSet(instance=course_plan, prefix='objectives')
-        weekly_lesson_formset = WeeklyLessonPlanFormSet(instance=course_plan, prefix='lessons')
-        cia_component_formset = CIAComponentFormSet(instance=course_plan, prefix='cia_components')
-    
+            all_forms_valid = lesson_formset.is_valid()
+
+        if all_forms_valid:
+            with transaction.atomic():
+                if is_hod_or_admin:
+                    form.save()
+                    objective_formset.save()
+                    cia_formset.save()
+                lesson_formset.save()
+            messages.success(request, f"Course Plan for '{course_plan.course.code}' updated successfully!")
+            return redirect('course_plan_list')
+        else:
+            messages.error(request, 'Please correct the errors below.')
+    else:  # GET request
+        form = CoursePlanForm(instance=course_plan, can_edit_full_plan=is_hod_or_admin)
+        
+        # --- UPDATED: Pass form_kwargs to the relevant formsets ---
+        objective_formset = CourseObjectiveFormSet(instance=course_plan, prefix='objectives', form_kwargs=objective_and_cia_kwargs)
+        lesson_formset = WeeklyLessonPlanFormSet(instance=course_plan, prefix='lessons') # Remains editable
+        cia_formset = CIAComponentFormSet(instance=course_plan, prefix='cia_components', form_kwargs=cia_kwargs)
+
+    # --- UPDATED: Conditional form title ---
+    if is_hod_or_admin:
+        title = f'Update Course Plan for {course_plan.course.code}'
+    else:
+        title = f'View/Edit Course Plan for {course_plan.course.code}'
+        
     context = {
-        'course_plan_form': course_plan_form,
-        'course_objective_formset': course_objective_formset,
-        'weekly_lesson_formset': weekly_lesson_formset,
-        'cia_component_formset': cia_component_formset,
-        'form_title': f'Update Course Plan for {course_plan.course.code}',
-        'pre_selected_course': course_plan.course, # Pass for display
+        'course_plan_form': form,
+        'course_objective_formset': objective_formset,
+        'weekly_lesson_formset': lesson_formset,
+        'cia_component_formset': cia_formset,
+        'form_title': title, # Use the new conditional title
+        'pre_selected_course': course_plan.course,
+        'can_edit_full_plan': is_hod_or_admin,
+        'can_edit_weekly_lessons': is_hod_or_admin or is_course_instructor,
     }
     return render(request, 'academics/course_plan_form.html', context)
 
@@ -757,7 +797,7 @@ def program_outcome_delete(request, pk):
 
 
 @login_required
-@user_passes_test(is_admin_or_hod, login_url='/accounts/login/')
+@user_passes_test(is_admin_or_hod_or_faculty, login_url='/accounts/login/') # ALLOW FACULTY ACCESS
 def course_list(request):
     # Prefetch related data for efficiency
     courses = Course.objects.all().select_related('department', 'semester__academic_department__academic_year').prefetch_related('faculty__user').order_by('semester__academic_department__academic_year__start_date', 'semester__order', 'code')

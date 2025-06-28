@@ -111,7 +111,7 @@
                 </a>
                 {% endif %}
                 {# NEW: Course Plans Link #}
-                {% if user.is_superuser or user.profile.role == 'ADMIN' or user.profile.role == 'HOD' %}
+                {% if user.profile.role == 'ADMIN' or user.profile.role == 'HOD'  or user.profile.role == 'FACULTY' %}
                     <a href="{% url 'course_plan_list' %}"
                        class="flex items-center px-3 lg:px-4 py-2 rounded-lg text-xs lg:text-sm font-medium transition duration-200
                                {% if 'course_plan' in request.resolver_match.url_name %}bg-indigo-700 text-white shadow-md{% else %}text-indigo-200 hover:bg-indigo-800 hover:text-white{% endif %}">
@@ -119,7 +119,7 @@
                         <span class="truncate">Course Plans</span>
                     </a>
                 {% endif %}
-                {% if user.profile.role == 'ADMIN' or user.profile.role == 'HOD' %}
+                {% if user.profile.role == 'ADMIN' or user.profile.role == 'HOD'  or user.profile.role == 'FACULTY' %}
                 {# NEW: Course Link #}
                 <a href="{% url 'course_list' %}"
                    class="flex items-center px-3 lg:px-4 py-2 rounded-lg text-xs lg:text-sm font-medium transition duration-200
@@ -297,7 +297,7 @@
                 </a>
                 {% endif %}
                 {# NEW: Course Plans Link #}
-                {% if user.is_superuser or user.profile.role == 'ADMIN' or user.profile.role == 'HOD' %}
+                {% if user.profile.role == 'ADMIN' or user.profile.role == 'HOD' or user.profile.role == 'FACULTY' %}
                     <a href="{% url 'course_plan_list' %}"
                        title="Course Plans"
                        class="flex items-center justify-center p-3 rounded-lg transition duration-200
@@ -306,7 +306,7 @@
                     </a>
                 {% endif %}
                 {# NEW: Course Link #}
-                {% if user.profile.role == 'ADMIN' or user.profile.role == 'HOD' %}
+                {% if user.profile.role == 'ADMIN' or user.profile.role == 'HOD' or user.profile.role == 'FACULTY' %}
                 <a href="{% url 'course_list' %}"
                    title="Courses"
                    class="flex items-center justify-center p-3 rounded-lg transition duration-200
@@ -482,7 +482,7 @@
                 </a>
                 {% endif %}
                 {# NEW: Course Plans Link #}
-                {% if user.is_superuser or user.profile.role == 'ADMIN' or user.profile.role == 'HOD' %}
+                {% if user.profile.role == 'ADMIN' or user.profile.role == 'HOD' or user.profile.role == 'FACULTY' %}
                     <a href="{% url 'course_plan_list' %}"
                        class="flex items-center px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg text-sm sm:text-base font-medium transition duration-200
                                {% if 'course_plan' in request.resolver_match.url_name %}bg-indigo-700 text-white shadow-md{% else %}text-indigo-200 hover:bg-indigo-800 hover:text-white{% endif %}">
@@ -491,7 +491,7 @@
                     </a>
                 {% endif %}
                 {# NEW: Course Link #}
-                {% if user.profile.role == 'ADMIN' or user.profile.role == 'HOD' %}
+                {% if user.profile.role == 'ADMIN' or user.profile.role == 'HOD' or user.profile.role == 'FACULTY' %}
                 <a href="{% url 'course_list' %}"
                    class="flex items-center px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg text-sm sm:text-base font-medium transition duration-200
                            {% if 'course_list' == request.resolver_match.url_name or 'course_create' == request.resolver_match.url_name or 'course_update' in request.resolver_match.url_name or 'course_delete' in request.resolver_match.url_name %}bg-indigo-700 text-white shadow-md{% else %}text-indigo-200 hover:bg-indigo-800 hover:text-white{% endif %}">

@@ -113,7 +113,14 @@
                                 {{ form.objective_text }}
                                 {% if form.objective_text.errors %}<p class="mt-2 text-sm text-red-600">{{ form.objective_text.errors.as_text }}</p>{% endif %}
                             </div>
-                            {% if form.instance.pk %}<div class="absolute top-2 right-2">{{ form.DELETE }}</div>{% endif %}
+                            {% if form.instance.pk and can_edit_full_plan %}
+                            <div class="mt-4 pt-3 border-t border-gray-300 flex justify-end">
+                                <label for="{{ form.DELETE.id_for_label }}" class="flex items-center text-sm text-red-600 hover:text-red-800 cursor-pointer transition-colors duration-150">
+                                    <input type="checkbox" name="{{ form.DELETE.html_name }}" id="{{ form.DELETE.id_for_label }}" class="h-4 w-4 rounded border-gray-400 text-red-600 focus:ring-red-500">
+                                    <span class="ml-2 font-medium">Mark for Deletion</span>
+                                </label>
+                            </div>
+                            {% endif %}
                         </div>
                     {% endfor %}
                     <div id="empty-objective-form" style="display: none;">
@@ -137,9 +144,11 @@
                         </div>
                     </div>                    
                 </div>
-                <button type="button" id="add-objective-form" class="mt-4 inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white-pure bg-brand-purple hover:bg-brand-yellow hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-purple transition duration-150 ease-in-out">
-                    Add Another Objective
-                </button>
+                {% if can_edit_full_plan %}
+                    <button type="button" id="add-objective-form" class="mt-4 inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white-pure bg-brand-purple hover:bg-brand-yellow hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-purple transition duration-150 ease-in-out">
+                        Add Another Objective
+                    </button>
+                {% endif %}
             </div>
 
             {# --- Weekly Lesson Plan Formset --- #}
@@ -190,7 +199,14 @@
                                 {{ form.references }}
                                 {% if form.references.errors %}<p class="mt-2 text-sm text-red-600">{{ form.references.errors.as_text }}</p>{% endif %}
                             </div>
-                            {% if form.instance.pk %}<div class="absolute top-2 right-2">{{ form.DELETE }}</div>{% endif %}
+                            {% if form.instance.pk %}
+                            <div class="mt-4 pt-3 border-t border-gray-300 flex justify-end">
+                                <label for="{{ form.DELETE.id_for_label }}" class="flex items-center text-sm text-red-600 hover:text-red-800 cursor-pointer transition-colors duration-150">
+                                    <input type="checkbox" name="{{ form.DELETE.html_name }}" id="{{ form.DELETE.id_for_label }}" class="h-4 w-4 rounded border-gray-400 text-red-600 focus:ring-red-500">
+                                    <span class="ml-2 font-medium">Mark for Deletion</span>
+                                </label>
+                            </div>
+                            {% endif %}
                         </div>
                     {% endfor %}
                     <div id="empty-lesson-form" style="display: none;">
@@ -243,67 +259,90 @@
                         {% endfor %}
                     </div>
                 {% endif %}
-                <div id="cia-components-container" class="space-y-4">
-                    {% for form in cia_component_formset %}
-                        <div class="relative bg-light-gray-bg p-3 rounded-md border border-border-default">
-                            <h3 class="text-sm font-semibold text-gray-900 mb-2">CIA Component #{{ forloop.counter }}</h3>
-                            {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div>
-                                    <label for="{{ form.order.id_for_label }}" class="block text-sm font-medium text-gray-default mb-1">{{ form.order.label }}</label>
-                                    {{ form.order }}
-                                    {% if form.order.errors %}<p class="mt-2 text-xs text-red-600">{{ form.order.errors.as_text }}</p>{% endif %}
-                                </div>
-                                <div>
-                                    <label for="{{ form.component_name.id_for_label }}" class="block text-sm font-medium text-gray-default mb-1">{{ form.component_name.label }}</label>
-                                    {{ form.component_name }}
-                                    {% if form.component_name.errors %}<p class="mt-2 text-xs text-red-600">{{ form.component_name.errors.as_text }}</p>{% endif %}
-                                </div>
-                            </div>
-                            <div class="mt-4">
-                                <label for="{{ form.units_covered.id_for_label }}" class="block text-sm font-medium text-gray-default mb-1">{{ form.units_covered.label }}</label>
-                                {{ form.units_covered }}
-                                {% if form.units_covered.errors %}<p class="mt-2 text-sm text-red-600">{{ form.units_covered.errors.as_text }}</p>{% endif %}
-                            </div>
-                            <div class="mt-4">
-                                <label for="{{ form.cos_covered.id_for_label }}" class="block text-sm font-medium text-gray-default mb-1">{{ form.cos_covered.label }}</label>
-                                {{ form.cos_covered }}
-                                <p class="mt-1 text-xs text-gray-default">{{ form.cos_covered.help_text }}</p>
-                                {% if form.cos_covered.errors %}<p class="mt-2 text-sm text-red-600">{{ form.cos_covered.errors.as_text }}</p>{% endif %}
-                            </div>
-                            {% if form.instance.pk %}<div class="absolute top-2 right-2">{{ form.DELETE }}</div>{% endif %}
+                {# --- CORRECTED CIA Components Formset --- #}
+                <div class="border border-border-default rounded-lg p-4 sm:p-6 space-y-4 mb-8">
+                    <h2 class="text-lg sm:text-xl font-semibold text-gray-800 mb-4 border-b pb-2">Continuous Internal Assessments (CIA)</h2>
+                    {{ cia_component_formset.management_form }}
+                    {% if cia_component_formset.non_form_errors %}
+                        <div class="bg-red-100 text-red-700 border border-red-200 p-3 rounded-md mb-4">
+                            {% for error in cia_component_formset.non_form_errors %}
+                                <p>{{ error }}</p>
+                            {% endfor %}
                         </div>
-                        <div id="empty-cia-form" style="display: none;">
+                    {% endif %}
+
+                    <div id="cia-components-container" class="space-y-4">
+                        {# First, loop through all the existing forms and display them #}
+                        {% for form in cia_component_formset %}
                             <div class="relative bg-light-gray-bg p-3 rounded-md border border-border-default">
-                                <h3 class="text-sm font-semibold text-gray-900 mb-2">CIA Component #__prefix__</h3>
-                                {% for hidden in cia_component_formset.empty_form.hidden_fields %}{{ hidden }}{% endfor %}
+                                <h3 class="text-sm font-semibold text-gray-900 mb-2">CIA Component #{{ forloop.counter }}</h3>
+                                {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div>
-                                        <label for="id_cia_components-__prefix__-order" class="block text-sm font-medium text-gray-default mb-1">Order</label>
-                                        {{ cia_component_formset.empty_form.order }}
+                                        <label for="{{ form.order.id_for_label }}" class="block text-sm font-medium text-gray-default mb-1">{{ form.order.label }}</label>
+                                        {{ form.order }}
+                                        {% if form.order.errors %}<p class="mt-2 text-xs text-red-600">{{ form.order.errors.as_text }}</p>{% endif %}
                                     </div>
                                     <div>
-                                        <label for="id_cia_components-__prefix__-component_name" class="block text-sm font-medium text-gray-default mb-1">Component name</label>
-                                        {{ cia_component_formset.empty_form.component_name }}
+                                        <label for="{{ form.component_name.id_for_label }}" class="block text-sm font-medium text-gray-default mb-1">{{ form.component_name.label }}</label>
+                                        {{ form.component_name }}
+                                        {% if form.component_name.errors %}<p class="mt-2 text-xs text-red-600">{{ form.component_name.errors.as_text }}</p>{% endif %}
                                     </div>
                                 </div>
                                 <div class="mt-4">
-                                    <label for="id_cia_components-__prefix__-units_covered" class="block text-sm font-medium text-gray-default mb-1">Units covered</label>
-                                    {{ cia_component_formset.empty_form.units_covered }}
+                                    <label for="{{ form.units_covered.id_for_label }}" class="block text-sm font-medium text-gray-default mb-1">{{ form.units_covered.label }}</label>
+                                    {{ form.units_covered }}
+                                    {% if form.units_covered.errors %}<p class="mt-2 text-xs text-red-600">{{ form.units_covered.errors.as_text }}</p>{% endif %}
                                 </div>
                                 <div class="mt-4">
-                                    <label for="id_cia_components-__prefix__-cos_covered" class="block text-sm font-medium text-gray-default mb-1">COs covered</label>
-                                    {{ cia_component_formset.empty_form.cos_covered }}
+                                    <label for="{{ form.cos_covered.id_for_label }}" class="block text-sm font-medium text-gray-default mb-1">{{ form.cos_covered.label }}</label>
+                                    {{ form.cos_covered }}
+                                    <p class="mt-1 text-xs text-gray-default">{{ form.cos_covered.help_text }}</p>
+                                    {% if form.cos_covered.errors %}<p class="mt-2 text-sm text-red-600">{{ form.cos_covered.errors.as_text }}</p>{% endif %}
+                                </div>
+                                {% if form.instance.pk and can_edit_full_plan %}
+                                <div class="mt-4 pt-3 border-t border-gray-300 flex justify-end">
+                                    <label for="{{ form.DELETE.id_for_label }}" class="flex items-center text-sm text-red-600 hover:text-red-800 cursor-pointer transition-colors duration-150">
+                                        <input type="checkbox" name="{{ form.DELETE.html_name }}" id="{{ form.DELETE.id_for_label }}" class="h-4 w-4 rounded border-gray-400 text-red-600 focus:ring-red-500">
+                                        <span class="ml-2 font-medium">Mark for Deletion</span>
+                                    </label>
+                                </div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+
+                    <div id="empty-cia-form" style="display: none;">
+                        <div class="relative bg-light-gray-bg p-3 rounded-md border border-border-default">
+                            <h3 class="text-sm font-semibold text-gray-900 mb-2">CIA Component #__prefix__</h3>
+                            {% for hidden in cia_component_formset.empty_form.hidden_fields %}{{ hidden }}{% endfor %}
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label for="id_cia_components-__prefix__-order" class="block text-sm font-medium text-gray-default mb-1">Order</label>
+                                    {{ cia_component_formset.empty_form.order }}
+                                </div>
+                                <div>
+                                    <label for="id_cia_components-__prefix__-component_name" class="block text-sm font-medium text-gray-default mb-1">Component name</label>
+                                    {{ cia_component_formset.empty_form.component_name }}
                                 </div>
                             </div>
-                        </div>                        
-                    {% endfor %}
+                            <div class="mt-4">
+                                <label for="id_cia_components-__prefix__-units_covered" class="block text-sm font-medium text-gray-default mb-1">Units covered</label>
+                                {{ cia_component_formset.empty_form.units_covered }}
+                            </div>
+                            <div class="mt-4">
+                                <label for="id_cia_components-__prefix__-cos_covered" class="block text-sm font-medium text-gray-default mb-1">COs covered</label>
+                                {{ cia_component_formset.empty_form.cos_covered }}
+                            </div>
+                        </div>
+                    </div>
+
+                    {% if can_edit_full_plan %}
+                        <button type="button" id="add-cia-form" class="mt-4 inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white-pure bg-brand-purple hover:bg-brand-yellow hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-purple transition duration-150 ease-in-out">
+                            Add Another CIA Component
+                        </button>
+                    {% endif %}
                 </div>
-                <button type="button" id="add-cia-form" 
-                class="mt-4 inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white-pure bg-brand-purple hover:bg-brand-yellow hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-purple transition duration-150 ease-in-out">
-                    Add Another CIA Component
-                </button>
-            </div>
 
             <div class="flex items-center space-x-4 mt-6">
                 <button type="submit"

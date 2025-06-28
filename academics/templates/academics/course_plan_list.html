@@ -47,7 +47,13 @@
                                 {% if plan.course_coordinator %}{{ plan.course_coordinator.user.username }}{% else %}N/A{% endif %}
                             </td>
                             <td class="px-4 lg:px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                <a href="{% url 'course_plan_update' plan.pk %}" class="text-brand-purple hover:text-brand-yellow mr-3 lg:mr-4 transition duration-150 ease-in-out">Edit</a>
+                                <a href="{% url 'course_plan_update' plan.pk %}" class="text-brand-purple hover:text-brand-yellow mr-3 lg:mr-4 transition duration-150 ease-in-out">
+                                    {% if request.user.profile.role == 'HOD' or request.user.profile.role == 'ADMIN' or request.user.is_superuser %}
+                                        Edit
+                                    {% else %}
+                                        View/Edit
+                                    {% endif %}
+                                </a>
                                 <a href="{% url 'course_plan_delete' plan.pk %}" class="text-red-600 hover:text-red-900 transition duration-150 ease-in-out"
                                    onclick="return confirm('Are you sure you want to delete Course Plan for {{ plan.course.code }}?');">
                                    Delete
@@ -81,7 +87,11 @@
                     <div class="flex justify-end space-x-3 pt-2 border-t border-gray-200">
                         <a href="{% url 'course_plan_update' plan.pk %}" 
                            class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-brand-purple hover:text-brand-yellow hover:bg-brand-purple hover:bg-opacity-10 rounded-md transition duration-150 ease-in-out">
-                            Edit
+                            {% if request.user.profile.role == 'HOD' or request.user.profile.role == 'ADMIN' or request.user.is_superuser %}
+                                Edit
+                            {% else %}
+                                View/Edit
+                            {% endif %}
                         </a>
                         <a href="{% url 'course_plan_delete' plan.pk %}" 
                            class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-red-600 hover:text-red-900 hover:bg-red-50 rounded-md transition duration-150 ease-in-out"
