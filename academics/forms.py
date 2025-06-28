@@ -698,8 +698,8 @@ class CourseObjectiveForm(forms.ModelForm):
         model = CourseObjective
         fields = ['order', 'unit_number', 'objective_text']
         widgets = {
-            'order': forms.NumberInput(attrs={'class': 'mt-1 block w-16 px-2 py-1 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm'}),
-            'unit_number': forms.TextInput(attrs={'class': 'mt-1 block w-24 px-2 py-1 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm'}),
+            'order': forms.NumberInput(attrs={'class': 'mt-1 block w-16 px-2 py-1 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base'}),
+            'unit_number': forms.TextInput(attrs={'class': 'mt-1 block w-24 px-2 py-1 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base'}),
             'objective_text': forms.Textarea(attrs={
                 'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base', 
                 'rows': 4}),
@@ -762,10 +762,10 @@ class CIAComponentForm(forms.ModelForm):
         model = CIAComponent
         fields = ['order', 'component_name', 'units_covered', 'cos_covered']
         widgets = {
-            'order': forms.NumberInput(attrs={'class': 'mt-1 block w-16 px-2 py-1 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm'}),
+            'order': forms.NumberInput(attrs={'class': 'mt-1 block w-16 px-2 py-1 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base'}),
             'component_name': forms.TextInput(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base'}),
-            'units_covered': forms.TextInput(attrs={'class': 'mt-1 block w-full px-2 py-1 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm', 'placeholder': 'e.g., UNIT 1 & 2'}),
-            'cos_covered': forms.SelectMultiple(attrs={'class': 'mt-1 block w-full px-2 py-1 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm h-24'}),
+            'units_covered': forms.TextInput(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base', 'placeholder': 'e.g., UNIT 1 & 2'}),
+            'cos_covered': forms.CheckboxSelectMultiple(attrs={'class': 'mt-1 block'}),
         }
 
 # Formset for CIA Components
