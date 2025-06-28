@@ -40,6 +40,8 @@ from django.contrib.auth.models import User  # <--- ADD THIS LINE
 from users.models import UserProfile, UserRole  # Import UserProfile from the users app
 import csv  # Import the csv module for CSV export
 from django.http import HttpResponse  # Import HttpResponse for serving files
+from django.db.models import Q
+
 
 
 # --- User Role Check Helper Functions ---
@@ -510,35 +512,41 @@ def semester_delete(request, pk):
 # --- CoursePlan Management Views (HOD/Admin) ---
 
 @login_required
-@user_passes_test(is_admin_or_hod_or_faculty, login_url='/accounts/login/') # ALLOW FACULTY ACCESS
+@user_passes_test(is_admin_or_hod_or_faculty, login_url='/accounts/login/')
 def course_plan_list(request):
+    # Base queryset
     course_plans = CoursePlan.objects.all().select_related(
-        'course__department',
         'course__semester__academic_department__academic_year',
-        'course_coordinator__user',
-        'created_by__profile'
-    ).prefetch_related('instructors__user').order_by(
-        '-course__semester__academic_department__academic_year__start_date',
-        'course__code'
-    )
+        'course_coordinator__user'
+    ).prefetch_related('instructors__user')
 
-    # Filter for HODs: only show plans for their assigned AcademicDepartment
-    if request.user.profile.role == 'HOD':
+    user_profile = request.user.profile
+
+    # Filter for HODs
+    if user_profile.role == 'HOD':
         try:
-            hod_academic_department = AcademicDepartment.objects.get(hod=request.user.profile)
+            hod_academic_department = AcademicDepartment.objects.get(hod=user_profile)
             course_plans = course_plans.filter(course__semester__academic_department=hod_academic_department)
         except AcademicDepartment.DoesNotExist:
-            course_plans = CoursePlan.objects.none() # Show nothing if HOD has no assigned dept
-            messages.warning(request, "Your HOD profile is not assigned to an Academic Department. No course plans displayed.")
-        except AcademicDepartment.MultipleObjectsReturned:
             course_plans = CoursePlan.objects.none()
-            messages.error(request, "Data inconsistency: HOD assigned to multiple Academic Departments.")
+
+    # --- NEW: Filter for Faculty ---
+    elif user_profile.role == 'FACULTY':
+        # Show plans where the user is either the coordinator OR in the list of instructors
+        course_plans = course_plans.filter(
+            Q(course_coordinator=user_profile) | Q(instructors=user_profile)
+        ).distinct()
+
+    # Admins see all plans, so no filter is applied for them.
 
     context = {
-        'course_plans': course_plans,
+        'course_plans': course_plans.order_by('-course__semester__academic_department__academic_year__start_date', 'course__code'),
         'form_title': 'Course Plans',
     }
+    # Remember to import Q from django.db.models at the top of your views.py
+    # from django.db.models import Q
     return render(request, 'academics/course_plan_list.html', context)
+
 
 @login_required
 @user_passes_test(is_admin_or_hod, login_url='/accounts/login/')
@@ -683,7 +691,7 @@ def course_plan_update(request, pk):
         title = f'Update Course Plan for {course_plan.course.code}'
     else:
         title = f'View/Edit Course Plan for {course_plan.course.code}'
-        
+
     context = {
         'course_plan_form': form,
         'course_objective_formset': objective_formset,
@@ -797,49 +805,53 @@ def program_outcome_delete(request, pk):
 
 
 @login_required
-@user_passes_test(is_admin_or_hod_or_faculty, login_url='/accounts/login/') # ALLOW FACULTY ACCESS
+@user_passes_test(is_admin_or_hod_or_faculty, login_url='/accounts/login/')
 def course_list(request):
-    # Prefetch related data for efficiency
-    courses = Course.objects.all().select_related('department', 'semester__academic_department__academic_year').prefetch_related('faculty__user').order_by('semester__academic_department__academic_year__start_date', 'semester__order', 'code')
+    # Start with the base querysets for all data
+    courses_qs = Course.objects.all().select_related('department', 'semester__academic_department__academic_year').prefetch_related('faculty__user')
+    semesters_qs = Semester.objects.all().select_related('academic_department__department', 'academic_department__academic_year')
+    departments_qs = Department.objects.all()
 
-    # NEW: Get all semesters and departments for filter dropdowns
-    semesters = Semester.objects.all().select_related('academic_department__department', 'academic_department__academic_year').order_by('-academic_department__academic_year__start_date', 'order')
-    departments = Department.objects.all().order_by('name')
+    user_profile = request.user.profile
 
-    # NEW: Apply filters based on GET parameters and user role
+    # --- NEW: Scope all querysets for the HOD role ---
+    if user_profile.role == 'HOD':
+        try:
+            # Get the HOD's specific academic department instance
+            hod_academic_dept = AcademicDepartment.objects.select_related('department').get(hod=user_profile)
+            
+            # Filter the main course list to the HOD's department
+            courses_qs = courses_qs.filter(semester__academic_department=hod_academic_dept)
+            
+            # CRITICAL FIX: Filter the dropdown querysets as well
+            semesters_qs = semesters_qs.filter(academic_department=hod_academic_dept)
+            departments_qs = departments_qs.filter(pk=hod_academic_dept.department.pk)
+            
+        except AcademicDepartment.DoesNotExist:
+            messages.warning(request, "Your HOD profile is not assigned to an Academic Department. No courses displayed.")
+            # If HOD is not assigned, they see nothing
+            courses_qs = Course.objects.none()
+            semesters_qs = Semester.objects.none()
+            departments_qs = Department.objects.none()
+
+    # Apply filters from GET parameters based on user selections
     selected_semester_id = request.GET.get('semester')
     selected_department_id = request.GET.get('department')
 
-    # Filter for HODs (by semester) or Admins (by department or semester)
-    if request.user.is_superuser or request.user.profile.role == 'ADMIN':
-        # Admin can filter by department OR semester
-        if selected_department_id:
-            courses = courses.filter(department__id=selected_department_id)
-        if selected_semester_id:
-            courses = courses.filter(semester__id=selected_semester_id)
-    elif request.user.profile.role == 'HOD':
-        # HOD can only filter by semesters within their department's scope
-        # First, filter courses to HOD's department
-        try:
-            hod_academic_department = AcademicDepartment.objects.get(hod=request.user.profile)
-            courses = courses.filter(semester__academic_department=hod_academic_department)
-        except AcademicDepartment.DoesNotExist:
-            courses = Course.objects.none() # If HOD not assigned to dept, show no courses
-            messages.warning(request, "Your HOD profile is not assigned to an Academic Department. No courses displayed.")
-        
-        # Then apply semester filter if selected
-        if selected_semester_id:
-            courses = courses.filter(semester__id=selected_semester_id)
-    # Faculty and Student users will see their specific course lists as defined elsewhere, if applicable.
-    # For this view, they are filtered by is_admin_or_hod decorator, so only Admin/HOD reach here.
+    # Note: Only Admins can effectively use the department filter, as it's restricted for HODs
+    if selected_department_id and (user_profile.role == 'ADMIN' or user.is_superuser):
+        courses_qs = courses_qs.filter(department__id=selected_department_id)
+
+    if selected_semester_id:
+        courses_qs = courses_qs.filter(semester__id=selected_semester_id)
 
     context = {
-        'courses': courses,
+        'courses': courses_qs.order_by('semester__academic_department__academic_year__start_date', 'semester__order', 'code'),
         'form_title': 'Courses',
-        'semesters': semesters, # Pass all semesters for filter dropdown
-        'departments': departments, # Pass all departments for filter dropdown
-        'selected_semester_id': selected_semester_id, # Pass selected ID to pre-select dropdown
-        'selected_department_id': selected_department_id, # Pass selected ID to pre-select dropdown
+        'semesters': semesters_qs.order_by('-academic_department__academic_year__start_date', 'order'),
+        'departments': departments_qs.order_by('name'),
+        'selected_semester_id': selected_semester_id,
+        'selected_department_id': selected_department_id,
     }
     return render(request, 'academics/course_list.html', context)
 
