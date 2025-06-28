@@ -55,4 +55,30 @@
             </div>
         </form>
     </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const semesterSelect = document.getElementById("id_name");
+            const orderInput = document.getElementById("id_order");
+    
+            const semesterOrderMap = {
+                "I": 1,
+                "II": 2,
+                "III": 3,
+                "IV": 4,
+                "V": 5,
+                "VI": 6,
+                "VII": 7,
+                "VIII": 8
+            };
+    
+            semesterSelect.addEventListener("change", function () {
+                const selected = semesterSelect.value;
+                if (semesterOrderMap[selected]) {
+                    orderInput.value = semesterOrderMap[selected];
+                } else {
+                    orderInput.value = "";
+                }
+            });
+        });
+    </script>
 {% endblock %}

@@ -579,6 +579,16 @@
     {# --- JavaScript for Mobile Menu Toggle with improved responsiveness --- #}
     {% block extra_js %}
     <script>
+        setTimeout(function () {
+          const alerts = document.querySelectorAll('.bg-green-100, .bg-red-100, .bg-yellow-100, .bg-blue-100');
+          alerts.forEach(function (alert) {
+            alert.style.transition = "opacity 0.5s ease-out";
+            alert.style.opacity = '0';
+            setTimeout(() => alert.remove(), 500); // clean up space after fade
+          });
+        }, 1500);  // change delay as needed (1500ms = 1.5seconds)
+    </script>      
+    <script>
         document.addEventListener('DOMContentLoaded', function() {
             const openMenuBtn = document.getElementById('open-mobile-menu');
             const closeMenuBtn = document.getElementById('close-mobile-menu');
