@@ -14,7 +14,7 @@ from .forms import (
     StudentMarkForm,
     StudentMarkFormSet,
     AcademicDepartmentForm,
-    SemesterForm
+    SemesterForm, CoursePlanForm, CourseObjectiveFormSet, WeeklyLessonPlanFormSet, CIAComponentFormSet
 )  # Form
 
 # Import models and forms
@@ -32,7 +32,7 @@ from .models import (
     CourseOutcomeAttainment,
     ProgramOutcomeAttainment,
     AcademicDepartment,
-    Semester,
+    Semester, CoursePlan, CourseObjective, WeeklyLessonPlan, CIAComponent
 )
 from django.db.models import Sum, F, ExpressionWrapper, DecimalField
 from django.db import transaction  # For atomic operations
@@ -505,6 +505,183 @@ def semester_delete(request, pk):
         'semester': semester,
     }
     return render(request, 'academics/semester_confirm_delete.html', context)
+
+
+# --- CoursePlan Management Views (HOD/Admin) ---
+
+@login_required
+@user_passes_test(is_admin_or_hod, login_url='/accounts/login/')
+def course_plan_list(request):
+    course_plans = CoursePlan.objects.all().select_related(
+        'course__department',
+        'course__semester__academic_department__academic_year',
+        'course_coordinator__user',
+        'created_by__profile'
+    ).prefetch_related('instructors__user').order_by(
+        '-course__semester__academic_department__academic_year__start_date',
+        'course__code'
+    )
+
+    # Filter for HODs: only show plans for their assigned AcademicDepartment
+    if request.user.profile.role == 'HOD':
+        try:
+            hod_academic_department = AcademicDepartment.objects.get(hod=request.user.profile)
+            course_plans = course_plans.filter(course__semester__academic_department=hod_academic_department)
+        except AcademicDepartment.DoesNotExist:
+            course_plans = CoursePlan.objects.none() # Show nothing if HOD has no assigned dept
+            messages.warning(request, "Your HOD profile is not assigned to an Academic Department. No course plans displayed.")
+        except AcademicDepartment.MultipleObjectsReturned:
+            course_plans = CoursePlan.objects.none()
+            messages.error(request, "Data inconsistency: HOD assigned to multiple Academic Departments.")
+
+    context = {
+        'course_plans': course_plans,
+        'form_title': 'Course Plans',
+    }
+    return render(request, 'academics/course_plan_list.html', context)
+
+@login_required
+@user_passes_test(is_admin_or_hod, login_url='/accounts/login/')
+def course_plan_create(request):
+    # Get Course ID from URL parameter if initiated from Course list
+    course_id = request.GET.get('course_id')
+    pre_selected_course = None
+    if course_id:
+        try:
+            pre_selected_course = Course.objects.get(pk=course_id)
+        except Course.DoesNotExist:
+            messages.error(request, "Selected Course does not exist.")
+            return redirect('course_list') # Redirect back to Course list if invalid Course
+
+    if request.method == 'POST':
+        course_plan_form = CoursePlanForm(request.POST)
+        course_objective_formset = CourseObjectiveFormSet(request.POST, prefix='objectives')
+        weekly_lesson_formset = WeeklyLessonPlanFormSet(request.POST, prefix='lessons')
+        cia_component_formset = CIAComponentFormSet(request.POST, prefix='cia_components')
+
+        if course_plan_form.is_valid() and course_objective_formset.is_valid() and weekly_lesson_formset.is_valid() and cia_component_formset.is_valid():
+            with transaction.atomic():
+                course_plan = course_plan_form.save(commit=False)
+                course_plan.created_by = request.user # Assign current user as creator
+
+                # If initiated from course list, ensure the Course is correctly linked.
+                # If course is part of the form's fields (e.g., if CourseForm was embedded), it would be in cleaned_data.
+                # Since Course is primary_key=True, it's implicitly part of instance, or directly set.
+                if pre_selected_course:
+                    course_plan.course = pre_selected_course
+                # else: If plan created standalone, form would need a course field.
+                # For now, it's assumed to be created from a Course context.
+
+                course_plan.save() # Save the CoursePlan first to get its ID (PK)
+
+                # Save children formsets
+                course_objective_formset.instance = course_plan
+                course_objective_formset.save()
+
+                weekly_lesson_formset.instance = course_plan
+                weekly_lesson_formset.save()
+
+                cia_component_formset.instance = course_plan
+                cia_component_formset.save()
+
+                messages.success(request, f"Course Plan for '{course_plan.course.code}' created successfully!")
+                return redirect('course_plan_list')
+        else:
+            messages.error(request, 'Please correct the errors in the forms below.')
+    else: # GET request
+        course_plan_form = CoursePlanForm(initial={'course': pre_selected_course}) # Pre-select course in form
+        # Initialize formsets for display
+        course_objective_formset = CourseObjectiveFormSet(prefix='objectives')
+        weekly_lesson_formset = WeeklyLessonPlanFormSet(prefix='lessons')
+        cia_component_formset = CIAComponentFormSet(prefix='cia_components')
+    
+    context = {
+        'course_plan_form': course_plan_form,
+        'course_objective_formset': course_objective_formset,
+        'weekly_lesson_formset': weekly_lesson_formset,
+        'cia_component_formset': cia_component_formset,
+        'form_title': 'Create Course Plan',
+        'pre_selected_course': pre_selected_course, # Pass to template for display
+    }
+    return render(request, 'academics/course_plan_form.html', context)
+
+
+@login_required
+@user_passes_test(is_admin_or_hod, login_url='/accounts/login/')
+def course_plan_update(request, pk):
+    course_plan = get_object_or_404(CoursePlan, pk=pk)
+
+    # Permission check: HOD can only update plans for their department
+    if request.user.profile.role == 'HOD':
+        try:
+            hod_academic_department = AcademicDepartment.objects.get(hod=request.user.profile)
+            if course_plan.course.semester.academic_department != hod_academic_department:
+                messages.error(request, "You do not have permission to update this Course Plan.")
+                return redirect('course_plan_list')
+        except AcademicDepartment.DoesNotExist:
+            messages.error(request, "Your HOD profile is not assigned to an Academic Department.")
+            return redirect('course_plan_list')
+
+    if request.method == 'POST':
+        course_plan_form = CoursePlanForm(request.POST, instance=course_plan)
+        course_objective_formset = CourseObjectiveFormSet(request.POST, instance=course_plan, prefix='objectives')
+        weekly_lesson_formset = WeeklyLessonPlanFormSet(request.POST, instance=course_plan, prefix='lessons')
+        cia_component_formset = CIAComponentFormSet(request.POST, instance=course_plan, prefix='cia_components')
+
+        if course_plan_form.is_valid() and course_objective_formset.is_valid() and weekly_lesson_formset.is_valid() and cia_component_formset.is_valid():
+            with transaction.atomic():
+                course_plan_form.save() # Save the main CoursePlan form
+
+                course_objective_formset.save() # Save/update/delete objectives
+                weekly_lesson_formset.save() # Save/update/delete lesson plans
+                cia_component_formset.save() # Save/update/delete CIA components
+
+                messages.success(request, f"Course Plan for '{course_plan.course.code}' updated successfully!")
+                return redirect('course_plan_list')
+        else:
+            messages.error(request, 'Please correct the errors in the forms below.')
+    else: # GET request
+        course_plan_form = CoursePlanForm(instance=course_plan)
+        course_objective_formset = CourseObjectiveFormSet(instance=course_plan, prefix='objectives')
+        weekly_lesson_formset = WeeklyLessonPlanFormSet(instance=course_plan, prefix='lessons')
+        cia_component_formset = CIAComponentFormSet(instance=course_plan, prefix='cia_components')
+    
+    context = {
+        'course_plan_form': course_plan_form,
+        'course_objective_formset': course_objective_formset,
+        'weekly_lesson_formset': weekly_lesson_formset,
+        'cia_component_formset': cia_component_formset,
+        'form_title': f'Update Course Plan for {course_plan.course.code}',
+        'pre_selected_course': course_plan.course, # Pass for display
+    }
+    return render(request, 'academics/course_plan_form.html', context)
+
+@login_required
+@user_passes_test(is_admin_or_hod, login_url='/accounts/login/')
+def course_plan_delete(request, pk):
+    course_plan = get_object_or_404(CoursePlan, pk=pk)
+
+    # Permission check: HOD can only delete plans for their department
+    if request.user.profile.role == 'HOD':
+        try:
+            hod_academic_department = AcademicDepartment.objects.get(hod=request.user.profile)
+            if course_plan.course.semester.academic_department != hod_academic_department:
+                messages.error(request, "You do not have permission to delete this Course Plan.")
+                return redirect('course_plan_list')
+        except AcademicDepartment.DoesNotExist:
+            messages.error(request, "Your HOD profile is not assigned to an Academic Department.")
+            return redirect('course_plan_list')
+
+    if request.method == 'POST':
+        course_plan.delete()
+        messages.success(request, f"Course Plan for '{course_plan.course.code}' deleted successfully.")
+        return redirect('course_plan_list')
+    
+    context = {
+        'course_plan': course_plan,
+    }
+    return render(request, 'academics/course_plan_confirm_delete.html', context)
+
 
 # --- Program Outcome Management Views ---
 

@@ -12,7 +12,7 @@ from .models import (
     Assessment,
     StudentMark,
     Semester,
-    AcademicDepartment
+    AcademicDepartment, CoursePlan, CourseObjective, WeeklyLessonPlan, CIAComponent
 )
 from users.models import UserProfile, UserRole  # Import UserProfile from the users app
 from django.forms import (
@@ -635,3 +635,105 @@ class StudentMarkForm(forms.ModelForm):
 from django.forms import formset_factory
 
 StudentMarkFormSet = formset_factory(StudentMarkForm, extra=0)
+
+
+# --- NEW: CoursePlan Management Forms ---
+
+class CoursePlanForm(forms.ModelForm):
+    # The 'course' field is a OneToOne, so it will be rendered automatically.
+    # We will need to customize its queryset in the view for context-specific creation.
+    
+    course_coordinator = forms.ModelChoiceField(
+        queryset=UserProfile.objects.filter(role__in=[UserRole.FACULTY, UserRole.HOD]).select_related('user').order_by('user__username'),
+        empty_label="Select Coordinator (Optional)",
+        required=False,
+        widget=forms.Select(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base'}),
+        label='Course Coordinator'
+    )
+    instructors = forms.ModelMultipleChoiceField(
+        queryset=UserProfile.objects.filter(role__in=[UserRole.FACULTY, UserRole.HOD]).select_related('user').order_by('user__username'),
+        required=False,
+        widget=forms.CheckboxSelectMultiple(attrs={'class': 'mt-1 block'}), # Standard checkbox list
+        label='Additional Instructors'
+    )
+
+    class Meta:
+        model = CoursePlan
+        # Note: 'course' field is automatically handled by ModelForm due to primary_key=True on the model
+        fields = ['title', 'description', 'course_coordinator', 'instructors']
+        widgets = {
+            'title': forms.TextInput(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base'}),
+            'description': forms.Textarea(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base', 'rows': 3}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['course_coordinator'].label_from_instance = lambda obj: f"{obj.user.first_name} {obj.user.last_name} ({obj.user.username})" if obj.user.first_name else obj.user.username
+        self.fields['instructors'].label_from_instance = lambda obj: f"{obj.user.first_name} {obj.user.last_name} ({obj.user.username})" if obj.user.first_name else obj.user.username
+
+
+class CourseObjectiveForm(forms.ModelForm):
+    class Meta:
+        model = CourseObjective
+        fields = ['order', 'unit_number', 'objective_text']
+        widgets = {
+            'order': forms.NumberInput(attrs={'class': 'mt-1 block w-16 px-2 py-1 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm'}),
+            'unit_number': forms.TextInput(attrs={'class': 'mt-1 block w-24 px-2 py-1 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm'}),
+            'objective_text': forms.Textarea(attrs={'class': 'mt-1 block w-full px-2 py-1 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm', 'rows': 2}),
+        }
+
+# Formset for Course Objectives
+CourseObjectiveFormSet = inlineformset_factory(
+    CoursePlan,        # Parent model
+    CourseObjective,   # Child model
+    form=CourseObjectiveForm,
+    extra=1,           # One empty form by default
+    can_delete=True,   # Allow deleting objectives
+    fields=['order', 'unit_number', 'objective_text']
+)
+
+
+class WeeklyLessonPlanForm(forms.ModelForm):
+    class Meta:
+        model = WeeklyLessonPlan
+        fields = ['order', 'unit_number', 'unit_details', 'week_dates', 'pedagogy', 'references']
+        widgets = {
+            'order': forms.NumberInput(attrs={'class': 'mt-1 block w-16 px-2 py-1 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm'}),
+            'unit_number': forms.TextInput(attrs={'class': 'mt-1 block w-24 px-2 py-1 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm'}),
+            'unit_details': forms.Textarea(attrs={'class': 'mt-1 block w-full px-2 py-1 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm', 'rows': 3}),
+            'week_dates': forms.TextInput(attrs={'class': 'mt-1 block w-full px-2 py-1 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm', 'placeholder': 'e.g., JULY 17TH - AUG 10TH'}),
+            'pedagogy': forms.Textarea(attrs={'class': 'mt-1 block w-full px-2 py-1 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm', 'rows': 3}),
+            'references': forms.Textarea(attrs={'class': 'mt-1 block w-full px-2 py-1 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm', 'rows': 3}),
+        }
+
+# Formset for Weekly Lesson Plans
+WeeklyLessonPlanFormSet = inlineformset_factory(
+    CoursePlan,        # Parent model
+    WeeklyLessonPlan,  # Child model
+    form=WeeklyLessonPlanForm,
+    extra=1,           # One empty form by default
+    can_delete=True,   # Allow deleting entries
+    fields=['order', 'unit_number', 'unit_details', 'week_dates', 'pedagogy', 'references']
+)
+
+
+class CIAComponentForm(forms.ModelForm):
+    class Meta:
+        model = CIAComponent
+        fields = ['order', 'component_name', 'units_covered', 'cos_covered']
+        widgets = {
+            'order': forms.NumberInput(attrs={'class': 'mt-1 block w-16 px-2 py-1 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm'}),
+            'component_name': forms.TextInput(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base'}),
+            'units_covered': forms.TextInput(attrs={'class': 'mt-1 block w-full px-2 py-1 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm', 'placeholder': 'e.g., UNIT 1 & 2'}),
+            'cos_covered': forms.SelectMultiple(attrs={'class': 'mt-1 block w-full px-2 py-1 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm h-24'}),
+        }
+
+# Formset for CIA Components
+CIAComponentFormSet = inlineformset_factory(
+    CoursePlan,     # Parent model
+    CIAComponent,   # Child model
+    form=CIAComponentForm,
+    extra=1,        # One empty form by default
+    can_delete=True, # Allow deleting components
+    fields=['order', 'component_name', 'units_covered', 'cos_covered']
+)

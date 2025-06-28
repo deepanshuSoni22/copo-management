@@ -362,3 +362,135 @@ class ProgramOutcomeAttainment(models.Model):
         verbose_name_plural = "Program Outcome Attainments"
         unique_together = ("program_outcome", "academic_year")
         ordering = ["academic_year__start_date", "program_outcome__code"]
+
+
+# --- NEW: Course Plan Management Models ---
+
+class CoursePlan(models.Model):
+    """
+    The main model representing a detailed Course Plan for a specific Course offering.
+    """
+    # Course plan is one-to-one with Course, as there's typically one plan per specific course offering (e.g., CS101-1st Sem-2024).
+    # Making it primary_key=True ensures the CoursePlan's PK is the same as the Course's PK.
+    course = models.OneToOneField(
+        Course,
+        on_delete=models.CASCADE,
+        primary_key=True,
+        related_name='course_plan' # Access CoursePlan from Course via course_instance.course_plan
+    )
+    title = models.CharField(max_length=255, help_text="e.g., Course Plan for AI (V SEM A & B)")
+    description = models.TextField(blank=True, null=True, help_text="General overview/introduction for the course plan.")
+    
+    # Coordinator and Instructors (from PDF)
+    course_coordinator = models.ForeignKey(
+        UserProfile,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='coordinated_course_plans',
+        limit_choices_to={'role__in': ['FACULTY', 'HOD']}, # Only Faculty or HOD can be coordinators
+        help_text="Primary person responsible for the course plan."
+    )
+    instructors = models.ManyToManyField(
+        UserProfile,
+        related_name='instructed_course_plans',
+        blank=True,
+        help_text="Other instructors assigned to this course (if any)."
+    )
+    
+    # Administrative details
+    created_by = models.ForeignKey( # Typically the HOD who created the plan
+        User,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='created_course_plans'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Course Plan for {self.course.code} - {self.course.name}"
+
+    class Meta:
+        verbose_name = "Course Plan"
+        verbose_name_plural = "Course Plans"
+        # Ordering based on the linked course's semester and academic department
+        ordering = ['-course__semester__academic_department__academic_year__start_date', 'course__code']
+
+
+class CourseObjective(models.Model):
+    """
+    Represents course objectives as described in the Course Plan document.
+    These are distinct from CourseOutcomes (COs).
+    """
+    course_plan = models.ForeignKey(
+        CoursePlan,
+        on_delete=models.CASCADE,
+        related_name='course_objectives'
+    )
+    unit_number = models.CharField(max_length=10, blank=True, null=True, help_text="e.g., 1, 2, Unit A, Unit B")
+    objective_text = models.TextField(help_text="Detailed description of the course objective.")
+    order = models.PositiveIntegerField(default=0, help_text="Order of the objective within the Course Plan")
+
+    def __str__(self):
+        return f"Obj for {self.course_plan.course.code} (Unit {self.unit_number}): {self.objective_text[:50]}..."
+
+    class Meta:
+        verbose_name = "Course Objective (Plan)"
+        verbose_name_plural = "Course Objectives (Plan)"
+        unique_together = ('course_plan', 'order')
+        ordering = ['order']
+
+
+class WeeklyLessonPlan(models.Model):
+    """
+    Represents a weekly entry in the Lesson Plan section of the Course Plan.
+    """
+    course_plan = models.ForeignKey(
+        CoursePlan,
+        on_delete=models.CASCADE,
+        related_name='weekly_lesson_plans'
+    )
+    unit_number = models.CharField(max_length=10, help_text="e.g., I, II, Unit 1")
+    unit_details = models.TextField(help_text="Topics covered in this unit/week.")
+    week_dates = models.CharField(max_length=100, blank=True, null=True, help_text="e.g., JULY 17TH - AUG 10TH")
+    pedagogy = models.TextField(blank=True, null=True, help_text="Methods used for teaching (e.g., Lecture, Demo, Activity-Based Learning).")
+    references = models.TextField(blank=True, null=True, help_text="Textbooks, web links for this unit.")
+    order = models.PositiveIntegerField(default=0, help_text="Order of the weekly plan entry.")
+
+    def __str__(self):
+        return f"Lesson Plan for {self.course_plan.course.code} (Unit {self.unit_number})"
+
+    class Meta:
+        verbose_name = "Weekly Lesson Plan"
+        verbose_name_plural = "Weekly Lesson Plans"
+        unique_together = ('course_plan', 'unit_number') # Unit number should be unique within a plan
+        ordering = ['order']
+
+
+class CIAComponent(models.Model):
+    """
+    Represents a Continuous Internal Assessment (CIA) Component defined in the Course Plan.
+    """
+    course_plan = models.ForeignKey(
+        CoursePlan,
+        on_delete=models.CASCADE,
+        related_name='cia_components'
+    )
+    component_name = models.CharField(max_length=200, help_text="e.g., CIA-I Test (10 Marks), CIA-II Assignment (5 Marks)")
+    units_covered = models.CharField(max_length=255, blank=True, null=True, help_text="e.g., UNIT 1 & 2")
+    # Link directly to CourseOutcome model for COs assessed by this component
+    cos_covered = models.ManyToManyField(
+        CourseOutcome,
+        blank=True,
+        related_name='cia_assessed_by'
+    )
+    order = models.PositiveIntegerField(default=0, help_text="Order of the CIA component.")
+
+    def __str__(self):
+        return f"CIA: {self.component_name} for {self.course_plan.course.code}"
+
+    class Meta:
+        verbose_name = "CIA Component"
+        verbose_name_plural = "CIA Components"
+        unique_together = ('course_plan', 'component_name')
+        ordering = ['order']

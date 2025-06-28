@@ -1,0 +1,448 @@
+{# academics/templates/academics/course_plan_form.html #}
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ form_title }}{% endblock %}
+
+{% block content %}
+    <div class="bg-white-pure rounded-lg shadow-md p-3 sm:p-4 lg:p-6 max-w-4xl mx-auto mb-8">
+        <h1 class="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-800 mb-6">{{ form_title }}</h1>
+        
+        <form method="post" class="space-y-8">
+            {% csrf_token %}
+            {# --- General Course Plan Details --- #}
+            <div class="border border-border-default rounded-lg p-4 sm:p-6 space-y-4 mb-8">
+                <h2 class="text-lg sm:text-xl font-semibold text-gray-800 mb-4 border-b pb-2">Plan Details</h2>
+                {% if course_plan_form.non_field_errors %}
+                    <div class="bg-red-100 text-red-700 border border-red-200 p-3 rounded-md mb-4">
+                        {% for error in course_plan_form.non_field_errors %}
+                            <p>{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                {# Course Name (from pre_selected_course) - Display only, not editable if OneToOne #}
+                {% if pre_selected_course %}
+                    <div class="bg-light-gray-bg p-3 rounded-md">
+                        <p class="block text-sm font-medium text-gray-700 mb-1">Course:</p>
+                        <p class="text-base font-semibold text-gray-900">{{ pre_selected_course.code }} - {{ pre_selected_course.name }}</p>
+                        <p class="text-xs text-gray-default">Semester: {{ pre_selected_course.semester.name }} ({{ pre_selected_course.semester.academic_department.department.name }} - {{ pre_selected_course.semester.academic_department.academic_year.start_date.year }})</p>
+                        {# Hidden input for the course PK if needed by the form for creation/update #}
+                        {# The CoursePlan model uses Course PK as its own PK, so it's implicit handling #}
+                    </div>
+                {% else %}
+                    {# If pre_selected_course is not passed (e.g., direct /course-plans/create), need a course selector #}
+                    {# For now, ensure creation is only from /courses/pk/create-plan/ context #}
+                    <div class="bg-red-100 text-red-700 border border-red-200 p-3 rounded-md mb-4">
+                        <p>Error: This form requires a course context. Please create a plan from the Course list page.</p>
+                    </div>
+                {% endif %}
+
+                <div>
+                    <label for="{{ course_plan_form.title.id_for_label }}" class="block text-sm font-medium text-gray-default mb-1">{{ course_plan_form.title.label }}</label>
+                    {{ course_plan_form.title }}
+                    {% if course_plan_form.title.errors %}
+                        <p class="mt-2 text-sm text-red-600">{{ course_plan_form.title.errors.as_text }}</p>
+                    {% endif %}
+                </div>
+                <div>
+                    <label for="{{ course_plan_form.description.id_for_label }}" class="block text-sm font-medium text-gray-default mb-1">{{ course_plan_form.description.label }}</label>
+                    {{ course_plan_form.description }}
+                    {% if course_plan_form.description.errors %}
+                        <p class="mt-2 text-sm text-red-600">{{ course_plan_form.description.errors.as_text }}</p>
+                    {% endif %}
+                </div>
+                <div>
+                    <label for="{{ course_plan_form.course_coordinator.id_for_label }}" class="block text-sm font-medium text-gray-default mb-1">{{ course_plan_form.course_coordinator.label }}</label>
+                    {{ course_plan_form.course_coordinator }}
+                    {% if course_plan_form.course_coordinator.errors %}
+                        <p class="mt-2 text-sm text-red-600">{{ course_plan_form.course_coordinator.errors.as_text }}</p>
+                    {% endif %}
+                </div>
+                <div>
+                    <label for="{{ course_plan_form.instructors.id_for_label }}" class="block text-sm font-medium text-gray-default mb-1">{{ course_plan_form.instructors.label }}</label>
+                    <div class="mt-1 space-y-2"> {# Style for checkbox list #}
+                        {% for checkbox in course_plan_form.instructors %}
+                            <div class="flex items-center">
+                                {{ checkbox.tag }}
+                                <label for="{{ checkbox.id_for_label }}" class="ml-2 block text-sm font-medium text-gray-default cursor-pointer">
+                                    {{ checkbox.choice_label }}
+                                </label>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    <p class="mt-1 text-xs text-gray-default">{{ course_plan_form.instructors.help_text }}</p>
+                    {% if course_plan_form.instructors.errors %}
+                        <p class="mt-2 text-sm text-red-600">{{ course_plan_form.instructors.errors.as_text }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            {# ... (Course Plan Details section) ... #}
+
+            {# --- Course Objectives Formset --- #}
+            <div class="border border-border-default rounded-lg p-4 sm:p-6 space-y-4 mb-8">
+                <h2 class="text-lg sm:text-xl font-semibold text-gray-800 mb-4 border-b pb-2">Course Objectives</h2>
+                {{ course_objective_formset.management_form }}
+                {% if course_objective_formset.non_form_errors %}
+                    <div class="bg-red-100 text-red-700 border border-red-200 p-3 rounded-md mb-4">
+                        {% for error in course_objective_formset.non_form_errors %}
+                            <p>{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                <div id="course-objectives-container" class="space-y-4">
+                    {% for form in course_objective_formset %}
+                        <div class="relative bg-light-gray-bg p-3 rounded-md border border-border-default">
+                            <h3 class="text-sm font-semibold text-gray-900 mb-2">Objective #{{ forloop.counter }}</h3>
+                            {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label for="{{ form.order.id_for_label }}" class="block text-sm font-medium text-gray-default mb-1">{{ form.order.label }}</label>
+                                    {{ form.order }}
+                                    {% if form.order.errors %}<p class="mt-2 text-xs text-red-600">{{ form.order.errors.as_text }}</p>{% endif %}
+                                </div>
+                                <div>
+                                    <label for="{{ form.unit_number.id_for_label }}" class="block text-sm font-medium text-gray-default mb-1">{{ form.unit_number.label }}</label>
+                                    {{ form.unit_number }}
+                                    {% if form.unit_number.errors %}<p class="mt-2 text-xs text-red-600">{{ form.unit_number.errors.as_text }}</p>{% endif %}
+                                </div>
+                            </div>
+                            <div class="mt-4">
+                                <label for="{{ form.objective_text.id_for_label }}" class="block text-sm font-medium text-gray-default mb-1">{{ form.objective_text.label }}</label>
+                                {{ form.objective_text }}
+                                {% if form.objective_text.errors %}<p class="mt-2 text-sm text-red-600">{{ form.objective_text.errors.as_text }}</p>{% endif %}
+                            </div>
+                            {% if form.instance.pk %}<div class="absolute top-2 right-2">{{ form.DELETE }}</div>{% endif %}
+                        </div>
+                    {% endfor %}
+                    <div id="empty-objective-form" style="display: none;">
+                        <div class="relative bg-light-gray-bg p-3 rounded-md border border-border-default">
+                            <h3 class="text-sm font-semibold text-gray-900 mb-2">Objective #__prefix__</h3>
+                            {% for hidden in course_objective_formset.empty_form.hidden_fields %}{{ hidden }}{% endfor %}
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label for="id_objectives-__prefix__-order" class="block text-sm font-medium text-gray-default mb-1">Order</label>
+                                    {{ course_objective_formset.empty_form.order }}
+                                </div>
+                                <div>
+                                    <label for="id_objectives-__prefix__-unit_number" class="block text-sm font-medium text-gray-default mb-1">Unit number</label>
+                                    {{ course_objective_formset.empty_form.unit_number }}
+                                </div>
+                            </div>
+                            <div class="mt-4">
+                                <label for="id_objectives-__prefix__-objective_text" class="block text-sm font-medium text-gray-default mb-1">Objective text</label>
+                                {{ course_objective_formset.empty_form.objective_text }}
+                            </div>
+                        </div>
+                    </div>                    
+                </div>
+                <button type="button" id="add-objective-form" class="mt-4 inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white-pure bg-brand-purple hover:bg-brand-yellow hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-purple transition duration-150 ease-in-out">
+                    Add Another Objective
+                </button>
+            </div>
+
+            {# --- Weekly Lesson Plan Formset --- #}
+            <div class="border border-border-default rounded-lg p-4 sm:p-6 space-y-4 mb-8">
+                <h2 class="text-lg sm:text-xl font-semibold text-gray-800 mb-4 border-b pb-2">Weekly Lesson Plan</h2>
+                {{ weekly_lesson_formset.management_form }}
+                {% if weekly_lesson_formset.non_form_errors %}
+                    <div class="bg-red-100 text-red-700 border border-red-200 p-3 rounded-md mb-4">
+                        {% for error in weekly_lesson_formset.non_form_errors %}
+                            <p>{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                <div id="weekly-lesson-plan-container" class="space-y-4">
+                    {% for form in weekly_lesson_formset %}
+                        <div class="relative bg-light-gray-bg p-3 rounded-md border border-border-default">
+                            <h3 class="text-sm font-semibold text-gray-900 mb-2">Lesson for Unit #{{ forloop.counter }}</h3>
+                            {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label for="{{ form.order.id_for_label }}" class="block text-sm font-medium text-gray-default mb-1">{{ form.order.label }}</label>
+                                    {{ form.order }}
+                                    {% if form.order.errors %}<p class="mt-2 text-xs text-red-600">{{ form.order.errors.as_text }}</p>{% endif %}
+                                </div>
+                                <div>
+                                    <label for="{{ form.unit_number.id_for_label }}" class="block text-sm font-medium text-gray-default mb-1">{{ form.unit_number.label }}</label>
+                                    {{ form.unit_number }}
+                                    {% if form.unit_number.errors %}<p class="mt-2 text-xs text-red-600">{{ form.unit_number.errors.as_text }}</p>{% endif %}
+                                </div>
+                            </div>
+                            <div class="mt-4">
+                                <label for="{{ form.unit_details.id_for_label }}" class="block text-sm font-medium text-gray-default mb-1">{{ form.unit_details.label }}</label>
+                                {{ form.unit_details }}
+                                {% if form.unit_details.errors %}<p class="mt-2 text-sm text-red-600">{{ form.unit_details.errors.as_text }}</p>{% endif %}
+                            </div>
+                            <div class="mt-4">
+                                <label for="{{ form.week_dates.id_for_label }}" class="block text-sm font-medium text-gray-default mb-1">{{ form.week_dates.label }}</label>
+                                {{ form.week_dates }}
+                                {% if form.week_dates.errors %}<p class="mt-2 text-sm text-red-600">{{ form.week_dates.errors.as_text }}</p>{% endif %}
+                            </div>
+                            <div class="mt-4">
+                                <label for="{{ form.pedagogy.id_for_label }}" class="block text-sm font-medium text-gray-default mb-1">{{ form.pedagogy.label }}</label>
+                                {{ form.pedagogy }}
+                                {% if form.pedagogy.errors %}<p class="mt-2 text-sm text-red-600">{{ form.pedagogy.errors.as_text }}</p>{% endif %}
+                            </div>
+                            <div class="mt-4">
+                                <label for="{{ form.references.id_for_label }}" class="block text-sm font-medium text-gray-default mb-1">{{ form.references.label }}</label>
+                                {{ form.references }}
+                                {% if form.references.errors %}<p class="mt-2 text-sm text-red-600">{{ form.references.errors.as_text }}</p>{% endif %}
+                            </div>
+                            {% if form.instance.pk %}<div class="absolute top-2 right-2">{{ form.DELETE }}</div>{% endif %}
+                        </div>
+                    {% endfor %}
+                    <div id="empty-lesson-form" style="display: none;">
+                        <div class="relative bg-light-gray-bg p-3 rounded-md border border-border-default">
+                            <h3 class="text-sm font-semibold text-gray-900 mb-2">Lesson for Unit #__prefix__</h3>
+                            {% for hidden in weekly_lesson_formset.empty_form.hidden_fields %}{{ hidden }}{% endfor %}
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label for="id_lessons-__prefix__-order" class="block text-sm font-medium text-gray-default mb-1">Order</label>
+                                    {{ weekly_lesson_formset.empty_form.order }}
+                                </div>
+                                <div>
+                                    <label for="id_lessons-__prefix__-unit_number" class="block text-sm font-medium text-gray-default mb-1">Unit number</label>
+                                    {{ weekly_lesson_formset.empty_form.unit_number }}
+                                </div>
+                            </div>
+                            <div class="mt-4">
+                                <label for="id_lessons-__prefix__-unit_details" class="block text-sm font-medium text-gray-default mb-1">Unit details</label>
+                                {{ weekly_lesson_formset.empty_form.unit_details }}
+                            </div>
+                            <div class="mt-4">
+                                <label for="id_lessons-__prefix__-week_dates" class="block text-sm font-medium text-gray-default mb-1">Week dates</label>
+                                {{ weekly_lesson_formset.empty_form.week_dates }}
+                            </div>
+                            <div class="mt-4">
+                                <label for="id_lessons-__prefix__-pedagogy" class="block text-sm font-medium text-gray-default mb-1">Pedagogy</label>
+                                {{ weekly_lesson_formset.empty_form.pedagogy }}
+                            </div>
+                            <div class="mt-4">
+                                <label for="id_lessons-__prefix__-references" class="block text-sm font-medium text-gray-default mb-1">References</label>
+                                {{ weekly_lesson_formset.empty_form.references }}
+                            </div>
+                        </div>
+                    </div>                    
+                </div>
+                <button type="button" id="add-lesson-form" 
+                class="mt-4 inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white-pure bg-brand-purple hover:bg-brand-yellow hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-purple transition duration-150 ease-in-out">
+                    Add Another Lesson Plan Entry
+                </button>
+            </div>
+
+            {# --- CIA Components Formset --- #}
+            <div class="border border-border-default rounded-lg p-4 sm:p-6 space-y-4 mb-8">
+                <h2 class="text-lg sm:text-xl font-semibold text-gray-800 mb-4 border-b pb-2">Continuous Internal Assessments (CIA)</h2>
+                {{ cia_component_formset.management_form }}
+                {% if cia_component_formset.non_form_errors %}
+                    <div class="bg-red-100 text-red-700 border border-red-200 p-3 rounded-md mb-4">
+                        {% for error in cia_component_formset.non_form_errors %}
+                            <p>{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                <div id="cia-components-container" class="space-y-4">
+                    {% for form in cia_component_formset %}
+                        <div class="relative bg-light-gray-bg p-3 rounded-md border border-border-default">
+                            <h3 class="text-sm font-semibold text-gray-900 mb-2">CIA Component #{{ forloop.counter }}</h3>
+                            {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label for="{{ form.order.id_for_label }}" class="block text-sm font-medium text-gray-default mb-1">{{ form.order.label }}</label>
+                                    {{ form.order }}
+                                    {% if form.order.errors %}<p class="mt-2 text-xs text-red-600">{{ form.order.errors.as_text }}</p>{% endif %}
+                                </div>
+                                <div>
+                                    <label for="{{ form.component_name.id_for_label }}" class="block text-sm font-medium text-gray-default mb-1">{{ form.component_name.label }}</label>
+                                    {{ form.component_name }}
+                                    {% if form.component_name.errors %}<p class="mt-2 text-xs text-red-600">{{ form.component_name.errors.as_text }}</p>{% endif %}
+                                </div>
+                            </div>
+                            <div class="mt-4">
+                                <label for="{{ form.units_covered.id_for_label }}" class="block text-sm font-medium text-gray-default mb-1">{{ form.units_covered.label }}</label>
+                                {{ form.units_covered }}
+                                {% if form.units_covered.errors %}<p class="mt-2 text-sm text-red-600">{{ form.units_covered.errors.as_text }}</p>{% endif %}
+                            </div>
+                            <div class="mt-4">
+                                <label for="{{ form.cos_covered.id_for_label }}" class="block text-sm font-medium text-gray-default mb-1">{{ form.cos_covered.label }}</label>
+                                {{ form.cos_covered }}
+                                <p class="mt-1 text-xs text-gray-default">{{ form.cos_covered.help_text }}</p>
+                                {% if form.cos_covered.errors %}<p class="mt-2 text-sm text-red-600">{{ form.cos_covered.errors.as_text }}</p>{% endif %}
+                            </div>
+                            {% if form.instance.pk %}<div class="absolute top-2 right-2">{{ form.DELETE }}</div>{% endif %}
+                        </div>
+                        <div id="empty-cia-form" style="display: none;">
+                            <div class="relative bg-light-gray-bg p-3 rounded-md border border-border-default">
+                                <h3 class="text-sm font-semibold text-gray-900 mb-2">CIA Component #__prefix__</h3>
+                                {% for hidden in cia_component_formset.empty_form.hidden_fields %}{{ hidden }}{% endfor %}
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label for="id_cia_components-__prefix__-order" class="block text-sm font-medium text-gray-default mb-1">Order</label>
+                                        {{ cia_component_formset.empty_form.order }}
+                                    </div>
+                                    <div>
+                                        <label for="id_cia_components-__prefix__-component_name" class="block text-sm font-medium text-gray-default mb-1">Component name</label>
+                                        {{ cia_component_formset.empty_form.component_name }}
+                                    </div>
+                                </div>
+                                <div class="mt-4">
+                                    <label for="id_cia_components-__prefix__-units_covered" class="block text-sm font-medium text-gray-default mb-1">Units covered</label>
+                                    {{ cia_component_formset.empty_form.units_covered }}
+                                </div>
+                                <div class="mt-4">
+                                    <label for="id_cia_components-__prefix__-cos_covered" class="block text-sm font-medium text-gray-default mb-1">COs covered</label>
+                                    {{ cia_component_formset.empty_form.cos_covered }}
+                                </div>
+                            </div>
+                        </div>                        
+                    {% endfor %}
+                </div>
+                <button type="button" id="add-cia-form" 
+                class="mt-4 inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white-pure bg-brand-purple hover:bg-brand-yellow hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-purple transition duration-150 ease-in-out">
+                    Add Another CIA Component
+                </button>
+            </div>
+
+            <div class="flex items-center space-x-4 mt-6">
+                <button type="submit"
+                        class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white-pure bg-brand-purple hover:bg-brand-yellow hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-purple transition duration-150 ease-in-out">
+                    Save Course Plan
+                </button>
+                <a href="{% url 'course_plan_list' %}"
+                   class="inline-flex justify-center py-2 px-4 border border-border-default rounded-md shadow-sm text-sm font-medium text-gray-default bg-white-pure hover:bg-light-gray-bg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-purple transition duration-150 ease-in-out">
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        let hasUnsavedChanges = false;
+        
+        // Function to add a new form to a formset
+        function addForm(containerId, totalFormsId, emptyFormId) {
+            const container = document.getElementById(containerId);
+            const totalFormsInput = document.getElementById(totalFormsId);
+            const emptyForm = document.getElementById(emptyFormId);
+
+            const currentTotalForms = parseInt(totalFormsInput.value);
+            const newForm = emptyForm.cloneNode(true);
+            
+            newForm.innerHTML = newForm.innerHTML.replace(/__prefix__/g, currentTotalForms);
+            newForm.style.display = 'block';
+            newForm.removeAttribute('id');
+            
+            // Mark as having unsaved changes
+            hasUnsavedChanges = true;
+            
+            // Add delete button for dynamically added forms
+            const deleteButton = document.createElement('button');
+            deleteButton.type = 'button';
+            deleteButton.className = 'mt-4 inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white-pure bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition duration-150 ease-in-out';
+            deleteButton.innerHTML = 'Remove';
+            deleteButton.onclick = function() {
+                newForm.remove();
+                updateFormNumbers(containerId);
+                // Decrease total forms count
+                totalFormsInput.value = parseInt(totalFormsInput.value) - 1;
+                checkForUnsavedChanges();
+            };
+            
+            const formContainer = newForm.querySelector('.relative.bg-light-gray-bg').parentNode;
+            formContainer.appendChild(deleteButton);
+            container.appendChild(newForm);
+
+            totalFormsInput.value = currentTotalForms + 1;
+            
+            // Add event listeners to new form inputs to track changes
+            addChangeListeners(newForm);
+        }
+        
+        // Function to update form numbers in headers after deletion
+        function updateFormNumbers(containerId) {
+            const container = document.getElementById(containerId);
+            const forms = container.querySelectorAll('.relative.bg-light-gray-bg');
+            forms.forEach((form, index) => {
+                const header = form.querySelector('h3');
+                if (header) {
+                    const text = header.textContent;
+                    if (text.includes('Objective')) {
+                        header.textContent = `Objective #${index + 1}`;
+                    } else if (text.includes('Lesson')) {
+                        header.textContent = `Lesson for Unit #${index + 1}`;
+                    } else if (text.includes('CIA Component')) {
+                        header.textContent = `CIA Component #${index + 1}`;
+                    }
+                }
+            });
+        }
+        
+        // Add change listeners to form inputs
+        function addChangeListeners(container) {
+            const inputs = container.querySelectorAll('input, textarea, select');
+            inputs.forEach(input => {
+                input.addEventListener('change', () => {
+                    hasUnsavedChanges = true;
+                });
+                input.addEventListener('input', () => {
+                    hasUnsavedChanges = true;
+                });
+            });
+        }
+        
+        // Check if there are still unsaved changes
+        function checkForUnsavedChanges() {
+            // This is a simplified check - you might want to make it more sophisticated
+            const dynamicForms = document.querySelectorAll('[id*="__prefix__"]');
+            hasUnsavedChanges = dynamicForms.length > 0;
+        }
+        
+        // Warn user before leaving page if there are unsaved changes
+        window.addEventListener('beforeunload', function(e) {
+            if (hasUnsavedChanges) {
+                const confirmationMessage = 'You have unsaved changes. Are you sure you want to leave?';
+                e.returnValue = confirmationMessage;
+                return confirmationMessage;
+            }
+        });
+        
+        // Clear unsaved changes flag when form is submitted
+        const form = document.querySelector('form');
+        if (form) {
+            form.addEventListener('submit', function() {
+                hasUnsavedChanges = false;
+            });
+        }
+        
+        // Add change listeners to existing form inputs
+        addChangeListeners(document);
+
+        // Event listeners for "Add Another..." buttons
+        const addObjectiveButton = document.getElementById('add-objective-form');
+        if (addObjectiveButton) {
+            addObjectiveButton.addEventListener('click', function() {
+                addForm('course-objectives-container', 'id_objectives-TOTAL_FORMS', 'empty-objective-form');
+            });
+        }
+
+        const addLessonButton = document.getElementById('add-lesson-form');
+        if (addLessonButton) {
+            addLessonButton.addEventListener('click', function() {
+                addForm('weekly-lesson-plan-container', 'id_lessons-TOTAL_FORMS', 'empty-lesson-form');
+            });
+        }
+
+        const addCiaButton = document.getElementById('add-cia-form');
+        if (addCiaButton) {
+            addCiaButton.addEventListener('click', function() {
+                addForm('cia-components-container', 'id_cia_components-TOTAL_FORMS', 'empty-cia-form');
+            });
+        }
+    });
+</script>
+{% endblock %}

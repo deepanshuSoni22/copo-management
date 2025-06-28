@@ -27,6 +27,12 @@ urlpatterns = [
     path('semesters/<int:pk>/update/', views.semester_update, name='semester_update'),
     path('semesters/<int:pk>/delete/', views.semester_delete, name='semester_delete'),
 
+    # CoursePlan Management URLs (NEW)
+    path('course-plans/', views.course_plan_list, name='course_plan_list'),
+    path('course-plans/create/', views.course_plan_create, name='course_plan_create'),
+    path('course-plans/<int:pk>/update/', views.course_plan_update, name='course_plan_update'),
+    path('course-plans/<int:pk>/delete/', views.course_plan_delete, name='course_plan_delete'),
+
 
     # Program Outcome URLs (existing)
     path('program-outcomes/', views.program_outcome_list, name='program_outcome_list'),
