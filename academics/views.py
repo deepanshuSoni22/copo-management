@@ -391,17 +391,34 @@ def academic_department_delete(request, pk):
 @login_required
 @user_passes_test(is_admin_or_hod, login_url='/accounts/login/') # Admin or HOD can manage Semesters
 def semester_list(request):
+    # Base queryset for all semesters, optimized for related lookups
     semesters = Semester.objects.all().select_related('academic_department__department', 'academic_department__academic_year').order_by('-academic_department__academic_year__start_date', 'order')
 
-    # NEW: Get all departments for filter dropdown
-    departments = Department.objects.all().order_by('name')
+    # NEW: Filter semesters based on user role
+    if request.user.profile.role == 'HOD':
+        try:
+            # Get the AcademicDepartment instance this HOD is assigned to
+            hod_academic_department = AcademicDepartment.objects.get(hod=request.user.profile)
+            # Filter semesters to only those belonging to this HOD's AcademicDepartment
+            semesters = semesters.filter(academic_department=hod_academic_department)
+        except AcademicDepartment.DoesNotExist:
+            # If an HOD is not assigned to any AcademicDepartment, they see no semesters
+            semesters = Semester.objects.none() # Return an empty queryset
+            messages.warning(request, "Your HOD profile is not assigned to an Academic Department. No semesters displayed.")
+        except AcademicDepartment.MultipleObjectsReturned:
+            # Should not happen with OneToOneField, but good to handle
+            semesters = Semester.objects.none()
+            messages.error(request, "Data inconsistency: HOD assigned to multiple Academic Departments. Please contact an Admin.")
+    # Admins (user.is_superuser or user.profile.role == 'ADMIN') will bypass this 'if' block and see all semesters.
 
-    # NEW: Apply filter by department if selected by Admin
+    # NEW: Get all departments for filter dropdown (if filtering is enabled for Admin)
+    departments = Department.objects.all().order_by('name')
     selected_department_id = request.GET.get('department') # Get selected department ID from GET param
 
-    if selected_department_id:
-        # Filter semesters by the selected department (through AcademicDepartment)
+    # NEW: Apply filter by department if selected by Admin (only if Admin)
+    if (request.user.is_superuser or request.user.profile.role == 'ADMIN') and selected_department_id:
         semesters = semesters.filter(academic_department__department__id=selected_department_id)
+
 
     context = {
         'semesters': semesters,
@@ -613,7 +630,22 @@ def course_list(request):
 @login_required
 @user_passes_test(is_admin_or_hod, login_url='/accounts/login/')
 def course_create(request):
-    # NEW: Check for semester_id in GET parameters to pre-populate
+    # Determine if user is HOD and get their AcademicDepartment (and thus their Department)
+    hod_assigned_department = None
+    if request.user.profile.role == 'HOD':
+        try:
+            # Get the AcademicDepartment instance this HOD is assigned to
+            # This links them to a specific Department for a specific Academic Year
+            hod_academic_department_instance = AcademicDepartment.objects.select_related('department').get(hod=request.user.profile)
+            hod_assigned_department = hod_academic_department_instance.department # Get the generic Department object
+        except AcademicDepartment.DoesNotExist:
+            messages.error(request, "Your HOD profile is not assigned to an Academic Department. Cannot create courses for a specific department.")
+            return redirect('course_list') # Redirect if HOD has no assigned department
+        except AcademicDepartment.MultipleObjectsReturned:
+            messages.error(request, "Data inconsistency: HOD assigned to multiple Academic Departments.")
+            return redirect('course_list')
+
+    # Prepare initial data for the form. This can include pre-filling semester from URL, etc.
     initial_data = {}
     semester_id = request.GET.get('semester_id')
     if semester_id:
@@ -622,18 +654,30 @@ def course_create(request):
             initial_data['semester'] = semester_obj
         except Semester.DoesNotExist:
             messages.error(request, "Selected Semester does not exist.")
+    
+    # If HOD, pre-fill department and set flag to disable it
+    if request.user.profile.role == 'HOD' and hod_assigned_department:
+        initial_data['department'] = hod_assigned_department
 
     if request.method == 'POST':
-        form = CourseForm(request.POST)
+        # Pass the request object to the form, as it needs to know the user for disabling logic
+        form = CourseForm(request.POST, request=request)
         if form.is_valid():
-            course = form.save()
+            course = form.save(commit=False) # Get instance without saving yet
+
+            # If HOD, force assignment of department to their own department (in case field was disabled)
+            if request.user.profile.role == 'HOD' and hod_assigned_department:
+                course.department = hod_assigned_department # Force assignment
+            
+            course.save()
             messages.success(request, f'Course "{course.code} - {course.name}" created successfully!')
             return redirect('course_list')
         else:
             messages.error(request, 'Please correct the errors below.')
-    else:
-        form = CourseForm(initial=initial_data) # Pass initial data to the form
-
+    else: # GET request
+        # Pass initial data and request object to the form
+        form = CourseForm(initial=initial_data, request=request)
+    
     context = {
         'form': form,
         'form_title': 'Create New Course',

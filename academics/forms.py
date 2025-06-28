@@ -283,74 +283,127 @@ class CourseForm(forms.ModelForm):
     department = forms.ModelChoiceField(
         queryset=Department.objects.all(),
         empty_label="Select Department",
-        required=False,
-        widget=forms.Select(
-            attrs={
-                "class": "mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base"
-            }
-        ),
-        label="Department",
+        widget=forms.Select(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base'}),
+        label='Department'
     )
     # Changed: academic_year field is removed, now linked via semester
     semester = forms.ModelChoiceField( # NEW: Semester field
-        queryset=Semester.objects.all().select_related('academic_department__academic_year').order_by('-academic_department__academic_year__start_date', 'order'),
+        queryset=Semester.objects.all().select_related('academic_department__department', 'academic_department__academic_year').order_by('-academic_department__academic_year__start_date', 'order'),
         empty_label="Select Semester",
         required=False, # Make it optional initially if course can exist without semester
-        widget=forms.Select(
-            attrs={
-                "class": "mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base"
-            }
-        ),
-        label="Semester",
+        widget=forms.Select(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base'}),
+        label='Semester'
     )
     # The 'faculty' field is a ManyToMany (existing)
     faculty = forms.ModelMultipleChoiceField(
-    queryset=UserProfile.objects.filter(role__in=[UserRole.FACULTY, UserRole.HOD]).select_related("user"),
-    widget=forms.CheckboxSelectMultiple(
-        attrs={
-            "class": "faculty-checkbox-list"  # We'll style this with CSS
-        }
-    ),
-    label="Assigned Faculty",
-    required=False,
-    help_text="Select all faculty members assigned to teach this course.",
+        queryset=UserProfile.objects.filter(role__in=[UserRole.FACULTY, UserRole.HOD]).select_related("user"),
+        widget=forms.CheckboxSelectMultiple(
+            attrs={
+                "class": "faculty-checkbox-list" # We'll style this with CSS
+            }
+        ),
+        label="Assigned Faculty",
+        required=False,
+        help_text="Select all faculty members assigned to teach this course.",
+    )
+    # Assesses COs field (fixed from previous errors)
+    assesses_cos = forms.ModelMultipleChoiceField(
+        queryset=CourseOutcome.objects.all().select_related("course").order_by("course__code", "code"),
+        widget=forms.SelectMultiple(
+            attrs={
+                "class": "mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base h-32"
+            }
+        ),
+        label="Assesses Course Outcomes",
+        required=False,
+        help_text="Hold Ctrl/Cmd to select multiple Course Outcomes assessed by this."
     )
 
-    assesses_cos = forms.ModelMultipleChoiceField(
-        queryset=CourseOutcome.objects.none(),  # Set dynamically in __init__
-        required=False,
-        widget=forms.CheckboxSelectMultiple(
-            attrs={"class": "co-checkbox-list"}
-        ),
-        label="Assessed Course Outcomes",
-        help_text="Select which Course Outcomes this course assesses.",
-    )
 
     class Meta:
         model = Course
-        # FIX: Add 'assesses_cos' back to the fields list
-        fields = ["name", "code", "department", "semester", "faculty", "assesses_cos"] # <-- ADD "assesses_cos" here
+        fields = ["name", "code", "department", "semester", "faculty", "assesses_cos"]
         widgets = {
             "name": forms.TextInput(
                 attrs={
-                    "class": "mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:focus:border-indigo-500 sm:text-base"
+                    "class": "mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base"
                 }
             ),
             "code": forms.TextInput(
                 attrs={
-                    "class": "mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:focus:border-indigo-500 sm:text-base"
+                    "class": "mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base"
                 }
             ),
         }
 
     def __init__(self, *args, **kwargs):
+        self.request = kwargs.pop('request', None) # Pop request out of kwargs
         super().__init__(*args, **kwargs)
-        if self.instance and self.instance.semester:
-            self.fields["assesses_cos"].queryset = CourseOutcome.objects.filter(
-                course__semester=self.instance.semester
-            ).order_by("code")
-        else:
+
+        # HOD restriction logic
+        if self.request and self.request.user.profile.role == 'HOD':
+            try:
+                hod_academic_department = AcademicDepartment.objects.get(hod=self.request.user.profile)
+                # Filter queryset for 'department' field to only HOD's department
+                self.fields['department'].queryset = Department.objects.filter(pk=hod_academic_department.department.pk)
+                # Set initial value and disable the field
+                self.fields['department'].initial = hod_academic_department.department
+                self.fields['department'].disabled = True
+                self.fields['department'].widget.attrs['class'] += ' bg-gray-100 cursor-not-allowed'
+                self.fields['department'].help_text = "Your department is pre-selected based on your HOD assignment and cannot be changed."
+                
+                # Further filter semester queryset to only those belonging to HOD's department
+                self.fields['semester'].queryset = Semester.objects.filter(academic_department=hod_academic_department).select_related('academic_department__department', 'academic_department__academic_year').order_by('-academic_department__academic_year__start_date', 'order')
+
+            except AcademicDepartment.DoesNotExist:
+                self.fields['department'].disabled = True
+                self.fields['department'].queryset = Department.objects.none()
+                self.fields['department'].help_text = "Your HOD profile is not assigned to an Academic Department. No department choices available."
+                self.fields['semester'].disabled = True
+                self.fields['semester'].queryset = Semester.objects.none()
+                self.fields['semester'].help_text = ""
+            except AcademicDepartment.MultipleObjectsReturned:
+                self.fields['department'].disabled = True
+                self.fields['department'].queryset = Department.objects.none()
+                self.fields['department'].help_text = "Data inconsistency: HOD assigned to multiple Academic Departments."
+                self.fields['semester'].disabled = True
+                self.fields['semester'].queryset = Semester.objects.none()
+                self.fields['semester'].help_text = ""
+
+        self.fields["faculty"].label_from_instance = lambda obj: (
+            f"{obj.user.first_name} {obj.user.last_name} ({obj.user.username})"
+            if obj.user.first_name
+            else obj.user.username
+        )
+        # Pre-filter assesses_cos queryset based on selected course if instance exists
+        if getattr(self.instance, "course", None): # This logic is fine, it applies to an *existing* Course instance
+            self.fields["assesses_cos"].queryset = (
+                self.instance.course.course_outcomes.all().order_by("code")
+            )
+        else: # For new Course forms or if no instance.course
+            # If the Course doesn't have a semester yet, filter to no COs.
+            # Otherwise, show all COs if no specific course instance is bound.
+            # For new Course forms, semester is picked after department.
+            # We want to show COs only if semester is selected.
+            # This complex pre-filtering is typically better handled by JS on frontend or dynamic updates.
+            # For a new form, without a semester selected, show no COs initially.
             self.fields["assesses_cos"].queryset = CourseOutcome.objects.none()
+
+    def clean(self):
+        cleaned_data = super().clean()
+        
+        # If the department field was disabled for HOD, re-attach its value from the HOD's AcademicDepartment
+        if self.request and self.request.user.profile.role == 'HOD' and self.fields['department'].disabled:
+            try:
+                hod_academic_department = AcademicDepartment.objects.select_related('department').get(hod=self.request.user.profile)
+                cleaned_data['department'] = hod_academic_department.department
+            except AcademicDepartment.DoesNotExist:
+                # If HOD's department is missing, add an error if department is required.
+                self.add_error('department', "Your assigned department could not be found.")
+            except AcademicDepartment.MultipleObjectsReturned:
+                self.add_error('department', "Data inconsistency: Multiple Academic Departments found for your HOD profile.")
+        
+        return cleaned_data
 
 
 class CourseOutcomeForm(forms.ModelForm):
