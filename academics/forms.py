@@ -923,19 +923,52 @@ class GradingForm(forms.ModelForm):
             'marks_obtained': 'Overall Marks',
             'feedback': 'General Feedback'
         }
+    
+    def __init__(self, *args, **kwargs):
+        # --- START OF NEW LOGIC ---
+        # Pop the custom 'assignment' argument before calling the parent class
+        assignment = kwargs.pop('assignment', None)
+        super().__init__(*args, **kwargs)
+
+        # If the assignment is rubric-based, remove the manual marks field
+        if assignment and assignment.assignment_type == 'rubric_based':
+            if 'marks_obtained' in self.fields:
+                del self.fields['marks_obtained']
 
 class RubricScoreForm(forms.ModelForm):
+    # --- START OF NEW METHOD ---
+    def __init__(self, *args, **kwargs):
+        """
+        Dynamically add min and max attributes to the score input widget
+        for client-side (browser-level) validation.
+        """
+        super().__init__(*args, **kwargs)
+
+        # self.instance is the RubricScore model instance this form is bound to.
+        # This is available when the form is first displayed on the page.
+        if self.instance and self.instance.criterion:
+            max_score = self.instance.criterion.max_score
+            
+            # Set the min and max attributes for the HTML input tag
+            self.fields['score'].widget.attrs.update({
+                'min': '0',
+                'max': max_score
+            })
+    # --- END OF NEW METHOD ---
+
     class Meta:
+        # This is your existing Meta class - NO CHANGES NEEDED
         model = RubricScore
         fields = ['score', 'criterion']
         widgets = {
             'score': forms.NumberInput(attrs={
                 'class': 'block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm'
             }),
-            'criterion': forms.HiddenInput()  # This is critical
+            'criterion': forms.HiddenInput()
         }
 
     def clean(self):
+        # This is your existing server-side validation - NO CHANGES NEEDED
         cleaned_data = super().clean()
         score = cleaned_data.get('score')
         criterion = cleaned_data.get('criterion')
@@ -948,7 +981,6 @@ class RubricScoreForm(forms.ModelForm):
                     code='score_too_high'
                 )
         return cleaned_data
-
 
 
 

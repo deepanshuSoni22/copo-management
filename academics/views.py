@@ -2140,12 +2140,28 @@ def create_student_by_faculty(request):
 
 # Update the permission check to include HODs and Admins
 @login_required
-@user_passes_test(is_faculty)
+@user_passes_test(is_admin_or_hod_or_faculty, login_url='/accounts/login/') # Use your existing permission check
 def assignment_list(request):
-    assignments = Assignment.objects.filter(created_by=request.user.profile).select_related('course')
+    # --- START OF NEW LOGIC ---
+    # Determine the queryset based on the user's role
+    if is_admin(request.user):
+        # Admins see all assignments from all courses
+        assignments = Assignment.objects.all().select_related('course', 'course__department')
+        form_title = 'All Assignments'
+    elif is_hod(request.user):
+        # HODs see all assignments in their department's courses
+        hod_department = request.user.profile.department
+        assignments = Assignment.objects.filter(course__department=hod_department).select_related('course')
+        form_title = f'{hod_department.name} Department Assignments'
+    else:
+        # Default case for regular Faculty: only see assignments they created
+        assignments = Assignment.objects.filter(created_by=request.user.profile).select_related('course')
+        form_title = 'My Assignments'
+    # --- END OF NEW LOGIC ---
+    
     context = {
-        'assignments': assignments, 
-        'form_title': 'My Assignments'
+        'assignments': assignments.order_by('-created_at'), # Add ordering
+        'form_title': form_title
     }
     return render(request, 'academics/assignment_list.html', context)
 
@@ -2390,44 +2406,40 @@ def grade_submission(request, assignment_pk, student_pk):
     is_rubric_based = assignment.assignment_type == 'rubric_based' and assignment.rubric
     rubric_formset = None
     RubricScoreFormSet = None
-    queryset = None # Define queryset outside the if block
-    rubric_data = None # This will hold our zipped data
+    queryset = None
+    rubric_data = None
 
     if is_rubric_based:
-        # ============================ START OF THE CORRECTED FIX ============================
-        # For every criterion in the rubric, ensure a corresponding RubricScore object exists.
-        # This is robust and works whether the submission was just created or already existed.
         criteria = assignment.rubric.criteria.all().order_by('order')
         for criterion in criteria:
             RubricScore.objects.get_or_create(
                 submission=submission,
                 criterion=criterion,
-                defaults={'score': 0}  # Provide default score only if creating
+                defaults={'score': 0}
             )
-        # ============================= END OF THE CORRECTED FIX =============================
-
-        # Now, define the formset using the guaranteed-to-exist scores
         queryset = RubricScore.objects.filter(submission=submission).select_related('criterion').order_by('criterion__order')
         RubricScoreFormSet = modelformset_factory(RubricScore, form=RubricScoreForm, extra=0)
 
     if request.method == 'POST':
-        grading_form = GradingForm(request.POST, instance=submission)
+        # --- PASS ASSIGNMENT TO THE FORM ---
+        grading_form = GradingForm(request.POST, instance=submission, assignment=assignment)
         if is_rubric_based:
             rubric_formset = RubricScoreFormSet(request.POST, queryset=queryset, prefix='scores')
-            # Ensure criterion field is set in each form to avoid "required" error
-            for form, score_instance in zip(rubric_formset.forms, queryset):
-                form.instance.criterion = score_instance.criterion
-                form.initial['criterion'] = score_instance.criterion
 
         if grading_form.is_valid() and (not is_rubric_based or rubric_formset.is_valid()):
             with transaction.atomic():
                 graded_submission = grading_form.save(commit=False)
-                graded_submission.graded_by = request.user.profile
-                graded_submission.graded_at = timezone.now()
-                graded_submission.save()
 
                 if is_rubric_based:
                     rubric_formset.save()
+                    total_score = RubricScore.objects.filter(submission=graded_submission).aggregate(total=Sum('score'))['total']
+                    graded_submission.marks_obtained = total_score or 0
+                
+                # For non-rubric assignments, marks_obtained will come directly from the valid form
+                
+                graded_submission.graded_by = request.user.profile
+                graded_submission.graded_at = timezone.now()
+                graded_submission.save()
             
             messages.success(request, f"Grade for {student.user.username} has been saved.")
             return redirect('submission_list_for_assignment', assignment_pk=assignment.pk)
@@ -2437,11 +2449,11 @@ def grade_submission(request, assignment_pk, student_pk):
                 rubric_data = zip(rubric_formset, queryset)
     
     else: # GET request
-        grading_form = GradingForm(instance=submission)
+        # --- PASS ASSIGNMENT TO THE FORM ---
+        grading_form = GradingForm(instance=submission, assignment=assignment)
         if is_rubric_based:
             rubric_formset = RubricScoreFormSet(queryset=queryset, prefix='scores')
             rubric_data = zip(rubric_formset, queryset)
-
 
     context = {
         'submission': submission,
@@ -2449,7 +2461,7 @@ def grade_submission(request, assignment_pk, student_pk):
         'student': student,
         'grading_form': grading_form,
         'rubric_data': rubric_data,
-        'rubric_formset': rubric_formset, # Keep this for the management_form
+        'rubric_formset': rubric_formset,
         'form_title': f'Grade Submission for {student.user.get_full_name()}'
     }
     return render(request, 'academics/grade_submission.html', context)
@@ -2528,3 +2540,30 @@ def student_update_by_faculty(request, pk):
         'form_title': f'Update Student: {user_to_edit.username}'
     }
     return render(request, 'academics/student_form.html', context)
+
+
+@login_required
+@user_passes_test(is_faculty) # Only faculty can access
+def student_delete_by_faculty(request, pk):
+    user_to_delete = get_object_or_404(User, pk=pk, profile__role=UserRole.STUDENT)
+    faculty_profile = request.user.profile
+
+    # Security Check: Ensure faculty can only delete students from courses they teach
+    faculty_departments = faculty_profile.taught_courses.values_list('department_id', flat=True).distinct()
+    if user_to_delete.profile.department_id not in faculty_departments:
+        messages.error(request, "You do not have permission to delete this student.")
+        return redirect('student_list')
+
+    if request.method == 'POST':
+        # If the form is submitted, delete the user and their profile (cascade)
+        deleted_username = user_to_delete.username
+        user_to_delete.delete()
+        messages.success(request, f"Student '{deleted_username}' has been deleted.")
+        return redirect('student_list')
+
+    # If it's a GET request, show the confirmation page
+    context = {
+        'student': user_to_delete,
+        'form_title': f'Delete Student: {user_to_delete.username}'
+    }
+    return render(request, 'academics/student_confirm_delete.html', context)

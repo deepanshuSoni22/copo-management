@@ -8,6 +8,7 @@ from django.contrib import messages  # For displaying feedback messages
 from django.contrib.auth.models import User  # Import Django's User model
 from .models import UserProfile, UserRole  # Import your custom models and choices
 from .forms import UserCreateForm, UserUpdateForm  # Import your new custom forms
+from academics.views import is_admin, is_hod, is_admin_or_hod
 
 
 # --- Existing Login/Logout Views ---
@@ -34,24 +35,32 @@ def is_admin(user):
 
 
 @login_required
-@user_passes_test(is_admin, login_url='/accounts/login/')
+@user_passes_test(is_admin_or_hod, login_url='/accounts/login/') # Use your existing permission check
 def user_list(request):
-    # Get all users with their profiles
-    users = User.objects.all().select_related('profile').order_by('username')
+    # --- START OF NEW LOGIC ---
+    # Determine the base queryset based on the user's role
+    if is_admin(request.user):
+        # Admins can see all users
+        users = User.objects.all().select_related('profile')
+    elif is_hod(request.user):
+        # HODs can only see users in their own department
+        hod_department = request.user.profile.department
+        users = User.objects.filter(profile__department=hod_department).select_related('profile')
+    else:
+        # This case should not be reached due to the decorator, but it's a safe fallback
+        users = User.objects.none()
+    # --- END OF NEW LOGIC ---
     
-    # NEW: Filter by role based on GET parameter
-    selected_role = request.GET.get('role', '') # Default to empty string (all roles)
-
-    if selected_role:
-        # If 'All' is selected, don't filter. Otherwise, filter by the selected role.
-        if selected_role != 'ALL':
-            users = users.filter(profile__role=selected_role)
+    # Existing role filtering logic will now apply to the pre-filtered queryset
+    selected_role = request.GET.get('role', '')
+    if selected_role and selected_role != 'ALL':
+        users = users.filter(profile__role=selected_role)
     
     context = {
-        'users': users,
+        'users': users.order_by('username'),
         'form_title': 'User Management',
-        'user_roles': UserRole.choices, # Pass all UserRole choices to the template
-        'selected_role': selected_role, # Pass the currently selected role for dropdown
+        'user_roles': UserRole.choices,
+        'selected_role': selected_role,
     }
     return render(request, 'users/user_list.html', context)
 

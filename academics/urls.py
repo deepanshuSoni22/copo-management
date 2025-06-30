@@ -101,6 +101,7 @@ urlpatterns = [
     path('student/assignments/', views.student_assignment_list, name='student_assignment_list'),
     path('student/assignments/<int:pk>/', views.assignment_detail_and_submit, name='assignment_detail_and_submit'),
     path('students/<int:pk>/update/', views.student_update_by_faculty, name='student_update_by_faculty'),
+    path('students/<int:pk>/delete/', views.student_delete_by_faculty, name='student_delete_by_faculty'),
 
 ]
 
