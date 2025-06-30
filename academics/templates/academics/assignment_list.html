@@ -63,7 +63,7 @@
                     </p>
                 </div>
                 <div class="flex justify-end space-x-3 pt-2 border-t border-gray-200">
-                    <a href="#" class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-green-600 hover:text-green-900 hover:bg-green-50 rounded-md">
+                    <a href="{% url 'submission_list_for_assignment' assignment.pk %}" class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-green-600 hover:text-green-900 hover:bg-green-50 rounded-md">
                         Submissions
                     </a>
                     <a href="{% url 'assignment_update' assignment.pk %}" class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-brand-purple hover:text-brand-yellow hover:bg-brand-purple hover:bg-opacity-10 rounded-md">

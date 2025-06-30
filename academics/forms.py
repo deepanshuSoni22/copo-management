@@ -916,8 +916,8 @@ class GradingForm(forms.ModelForm):
         model = Submission
         fields = ['marks_obtained', 'feedback']
         widgets = {
-            'marks_obtained': forms.NumberInput(attrs={'class': 'mt-1 block w-full px-4 py-2 border ...'}),
-            'feedback': forms.Textarea(attrs={'class': 'mt-1 block w-full px-4 py-2 border ...', 'rows': 4}),
+            'marks_obtained': forms.NumberInput(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base'}),
+            'feedback': forms.Textarea(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base', 'rows': 4}),
         }
         labels = {
             'marks_obtained': 'Overall Marks',
@@ -930,7 +930,7 @@ class RubricScoreForm(forms.ModelForm):
         fields = ['score', 'criterion']
         widgets = {
             'score': forms.NumberInput(attrs={
-                'class': 'block w-24 px-3 py-2 border border-gray-300 rounded-md shadow-sm'
+                'class': 'block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm'
             }),
             'criterion': forms.HiddenInput()  # This is critical
         }
