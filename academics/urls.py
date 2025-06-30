@@ -82,4 +82,25 @@ urlpatterns = [
     path('my-attainment/', views.student_personal_attainment_view, name='student_personal_attainment_view'), # NEW
 
     path('export/co-attainment-csv/', views.export_co_attainment_csv, name='export_co_attainment_csv'), # NEW
+
+    path('faculty/create-student/', views.create_student_by_faculty, name='faculty_create_student'),
+
+    path('faculty/assignments/', views.assignment_list, name='assignment_list'),
+    path('faculty/assignments/create/', views.assignment_create, name='assignment_create'),
+    path('faculty/assignments/<int:pk>/update/', views.assignment_update, name='assignment_update'),
+    path('faculty/assignments/<int:pk>/delete/', views.assignment_delete, name='assignment_delete'),
+    path('faculty/assignments/<int:assignment_pk>/submissions/', views.submission_list_for_assignment, name='submission_list_for_assignment'),
+    path('faculty/assignments/<int:assignment_pk>/grade/<int:student_pk>/', views.grade_submission, name='grade_submission'),
+
+    path('faculty/rubrics/', views.rubric_list, name='rubric_list'),
+    path('faculty/rubrics/create/', views.rubric_create, name='rubric_create'),
+    path('faculty/rubrics/<int:pk>/update/', views.rubric_update, name='rubric_update'),
+    path('faculty/rubrics/<int:pk>/delete/', views.rubric_delete, name='rubric_delete'),
+
+    path('students/', views.student_list, name='student_list'),
+    path('student/assignments/', views.student_assignment_list, name='student_assignment_list'),
+    path('student/assignments/<int:pk>/', views.assignment_detail_and_submit, name='assignment_detail_and_submit'),
+    path('students/<int:pk>/update/', views.student_update_by_faculty, name='student_update_by_faculty'),
+
 ]
+

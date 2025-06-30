@@ -84,6 +84,14 @@
                 </a>
                 {% endif %}
                 {% if user.profile.role == 'STUDENT' %}
+                <a href="{% url 'student_assignment_list' %}"
+                    class="flex items-center px-3 lg:px-4 py-2 rounded-lg text-xs lg:text-sm font-medium transition duration-200
+                        {% if 'student_assignment_list' in request.resolver_match.url_name or 'assignment_detail_and_submit' in request.resolver_match.url_name %}bg-indigo-700 text-white shadow-md{% else %}text-indigo-200 hover:bg-indigo-800 hover:text-white{% endif %}">
+                    <svg class="w-4 h-4 lg:w-5 lg:h-5 mr-2 lg:mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                    <span class="truncate">My Assignments</span>
+                </a>
+                {% endif %}
+                {% if user.profile.role == 'STUDENT' %}
                 <a href="{% url 'student_personal_attainment_view' %}"
                     class="flex items-center px-3 lg:px-4 py-2 rounded-lg text-xs lg:text-sm font-medium transition duration-200
                     {% if 'student_personal_attainment_view' == request.resolver_match.url_name %}bg-indigo-700 text-white shadow-md{% else %}text-indigo-200 hover:bg-indigo-800 hover:text-white{% endif %}">
@@ -137,14 +145,39 @@
                     <span class="truncate">Course Outcomes</span>
                 </a>
                 {% endif %}
+                {# Show for all relevant roles #}
+                {% if user.profile.role == 'FACULTY' or user.profile.role == 'HOD' or user.profile.role == 'ADMIN' %}
+                    <a href="{% url 'student_list' %}"
+                    class="flex items-center px-3 lg:px-4 py-2 rounded-lg text-xs lg:text-sm font-medium transition duration-200 text-indigo-200 hover:bg-indigo-800 hover:text-white {% if 'student_' in request.resolver_match.url_name %}bg-indigo-700 text-white shadow-md{% endif %}">
+                        <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h-4v-2a3 3 0 00-3-3H9a3 3 0 00-3 3v2H2M3 10V4a2 2 0 012-2h4a2 2 0 012 2v6m-4 0h6m-3 0V4a2 2 0 00-2-2H5a2 2 0 00-2 2v6m10-2h4a2 2 0 012 2v6m-2 0H14v-2a3 3 0 00-3-3h-2a3 3 0 00-3 3v2H2M3 10V4a2 2 0 012-2h4a2 2 0 012 2v6m-4 0h6m-3 0V4a2 2 0 00-2-2H5a2 2 0 00-2 2v6m10-2h4a2 2 0 012 2v6"></path></svg>
+                        <span>Students</span>
+                    </a>
+                {% endif %}
+                {% if user.profile.role == 'FACULTY' %}
+                    {# Assignments Link -- FIX: Unique highlight condition & NEW: Unique SVG icon #}
+                    <a href="{% url 'assignment_list' %}" 
+                    class="flex items-center px-3 lg:px-4 py-2 rounded-lg text-xs lg:text-sm font-medium transition duration-200
+                            {% if 'assignment' in request.resolver_match.url_name %}bg-indigo-700 text-white shadow-md{% else %}text-indigo-200 hover:bg-indigo-800 hover:text-white{% endif %}">
+                        <svg class="w-4 h-4 lg:w-5 lg:h-5 mr-2 lg:mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                        <span class="truncate">Assignments</span>
+                    </a>
+                    {# Rubrics Link -- FIX: Unique highlight condition & NEW: Unique SVG icon #}
+                    <a href="{% url 'rubric_list' %}" 
+                    class="flex items-center px-3 lg:px-4 py-2 rounded-lg text-xs lg:text-sm font-medium transition duration-200
+                            {% if 'rubric' in request.resolver_match.url_name %}bg-indigo-700 text-white shadow-md{% else %}text-indigo-200 hover:bg-indigo-800 hover:text-white{% endif %}">
+                        <svg class="w-4 h-4 lg:w-5 lg:h-5 mr-2 lg:mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg>
+                        <span class="truncate">Rubrics</span>
+                    </a>
+                {% endif %}
+
                 {% if user.is_superuser or user.profile.role == 'ADMIN' or user.profile.role == 'HOD' or user.profile.role == 'FACULTY' %}
-                {# NEW: Assessments Link #}
-                <a href="{% url 'assessment_list' %}"
-                   class="flex items-center px-3 lg:px-4 py-2 rounded-lg text-xs lg:text-sm font-medium transition duration-200
-                           {% if 'assessment_' in request.resolver_match.url_name and 'assessment_type' not in request.resolver_match.url_name %}bg-indigo-700 text-white shadow-md{% else %}text-indigo-200 hover:bg-indigo-800 hover:text-white{% endif %}">
-                    <svg class="w-4 h-4 lg:w-5 lg:h-5 mr-2 lg:mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
-                    <span class="truncate">Assessments</span>
-                </a>
+                    {# Assessments Link -- No changes needed here, but included for context #}
+                    <a href="{% url 'assessment_list' %}"
+                    class="flex items-center px-3 lg:px-4 py-2 rounded-lg text-xs lg:text-sm font-medium transition duration-200
+                            {% if 'assessment_' in request.resolver_match.url_name and 'assessment_type' not in request.resolver_match.url_name %}bg-indigo-700 text-white shadow-md{% else %}text-indigo-200 hover:bg-indigo-800 hover:text-white{% endif %}">
+                        <svg class="w-4 h-4 lg:w-5 lg:h-5 mr-2 lg:mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        <span class="truncate">Assessments</span>
+                    </a>
                 {% endif %}
                 {% if user.profile.role == 'ADMIN' or user.profile.role == 'HOD' %}
                 {# NEW: Calculate Attainment Link #}
@@ -270,6 +303,14 @@
                 </a>
                 {% endif %}
                 {% if user.profile.role == 'STUDENT' %}
+                    <a href="{% url 'student_assignment_list' %}"
+                        title="My Assignments"
+                        class="flex items-center justify-center p-3 rounded-lg transition duration-200
+                                {% if 'student_assignment_list' in request.resolver_match.url_name or 'assignment_detail_and_submit' in request.resolver_match.url_name %}bg-indigo-700 text-white shadow-md{% else %}text-indigo-200 hover:bg-indigo-800 hover:text-white{% endif %}">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                    </a>
+                {% endif %}
+                {% if user.profile.role == 'STUDENT' %}
                 <a href="{% url 'student_personal_attainment_view' %}"
                     title="My Attainment"
                     class="flex items-center justify-center p-3 rounded-lg transition duration-200
@@ -322,6 +363,22 @@
                            {% if 'course_outcome' in request.resolver_match.url_name %}bg-indigo-700 text-white shadow-md{% else %}text-indigo-200 hover:bg-indigo-800 hover:text-white{% endif %}">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
                 </a>
+                {% endif %}
+                {% if user.profile.role == 'FACULTY' %}
+                    {# NEW: Assignments Link for Tablet #}
+                    <a href="{% url 'assignment_list' %}"
+                    title="Assignments"
+                    class="flex items-center justify-center p-3 rounded-lg transition duration-200
+                            {% if 'assignment' in request.resolver_match.url_name %}bg-indigo-700 text-white shadow-md{% else %}text-indigo-200 hover:bg-indigo-800 hover:text-white{% endif %}">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                    </a>
+                    {# NEW: Rubrics Link for Tablet #}
+                    <a href="{% url 'rubric_list' %}"
+                    title="Rubrics"
+                    class="flex items-center justify-center p-3 rounded-lg transition duration-200
+                            {% if 'rubric' in request.resolver_match.url_name %}bg-indigo-700 text-white shadow-md{% else %}text-indigo-200 hover:bg-indigo-800 hover:text-white{% endif %}">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg>
+                    </a>
                 {% endif %}
                 {# NEW: Assessments Link #}
                 {% if user.is_superuser or user.profile.role == 'ADMIN' or user.profile.role == 'HOD' or user.profile.role == 'FACULTY' %}
@@ -455,9 +512,17 @@
                 </a>
                 {% endif %}
                 {% if user.profile.role == 'STUDENT' %}
+                <a href="{% url 'student_assignment_list' %}"
+                    class="flex items-center px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg text-sm sm:text-base font-medium transition duration-200
+                            {% if 'student_assignment_list' in request.resolver_match.url_name or 'assignment_detail_and_submit' in request.resolver_match.url_name %}bg-indigo-700 text-white shadow-md{% else %}text-indigo-200 hover:bg-indigo-800 hover:text-white{% endif %}">
+                        <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                        <span>My Assignments</span>
+                </a>
+                {% endif %}
+                {% if user.profile.role == 'STUDENT' %}
                 <a href="{% url 'student_personal_attainment_view' %}"
                     class="flex items-center px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg text-sm sm:text-base font-medium transition duration-200
-                    {% if 'student_personal_marks_view' == request.resolver_match.url_name %}bg-indigo-700 text-white shadow-md{% else %}text-indigo-200 hover:bg-indigo-800 hover:text-white{% endif %}">                    
+                    {% if 'student_personal_attainment_view' == request.resolver_match.url_name %}bg-indigo-700 text-white shadow-md{% else %}text-indigo-200 hover:bg-indigo-800 hover:text-white{% endif %}">
                     <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
                     My Attainment
                 </a>
@@ -508,6 +573,22 @@
                     Course Outcomes
                 </a>
                 {% endif %}
+                {% if user.profile.role == 'FACULTY' %}
+                    {# NEW: Assignments Link for Mobile #}
+                    <a href="{% url 'assignment_list' %}"
+                    class="flex items-center px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg text-sm sm:text-base font-medium transition duration-200
+                            {% if 'assignment' in request.resolver_match.url_name %}bg-indigo-700 text-white shadow-md{% else %}text-indigo-200 hover:bg-indigo-800 hover:text-white{% endif %}">
+                        <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                        <span>Assignments</span>
+                    </a>
+                    {# NEW: Rubrics Link for Mobile #}
+                    <a href="{% url 'rubric_list' %}"
+                    class="flex items-center px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg text-sm sm:text-base font-medium transition duration-200
+                            {% if 'rubric' in request.resolver_match.url_name %}bg-indigo-700 text-white shadow-md{% else %}text-indigo-200 hover:bg-indigo-800 hover:text-white{% endif %}">
+                        <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg>
+                        <span>Rubrics</span>
+                    </a>
+                    {% endif %}
                 {# NEW: Assessments Link #}
                 {% if user.is_superuser or user.profile.role == 'ADMIN' or user.profile.role == 'HOD' or user.profile.role == 'FACULTY' %}
                 <a href="{% url 'assessment_list' %}"

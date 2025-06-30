@@ -1,5 +1,7 @@
 # academics/views.py
 from django.shortcuts import render, redirect, get_object_or_404
+from django.utils import timezone
+from django.forms import modelformset_factory
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages  # For displaying feedback messages
 from django.views.generic import View  # For class-based views if preferred
@@ -14,7 +16,8 @@ from .forms import (
     StudentMarkForm,
     StudentMarkFormSet,
     AcademicDepartmentForm,
-    SemesterForm, CoursePlanForm, CourseObjectiveFormSet, WeeklyLessonPlanFormSet, CIAComponentFormSet
+    SemesterForm, CoursePlanForm, CourseObjectiveFormSet, WeeklyLessonPlanFormSet, CIAComponentFormSet, StudentCreationForm, RubricForm, RubricCriterionFormSet, AssignmentForm, RubricScore,
+    SubmissionForm, GradingForm, RubricScoreForm, StudentUpdateByFacultyForm
 )  # Form
 
 # Import models and forms
@@ -32,7 +35,7 @@ from .models import (
     CourseOutcomeAttainment,
     ProgramOutcomeAttainment,
     AcademicDepartment,
-    Semester, CoursePlan, CourseObjective, WeeklyLessonPlan, CIAComponent
+    Semester, CoursePlan, CourseObjective, WeeklyLessonPlan, CIAComponent, Rubric, RubricCriterion, Assignment, Submission
 )
 from django.db.models import Sum, F, ExpressionWrapper, DecimalField
 from django.db import transaction  # For atomic operations
@@ -839,7 +842,7 @@ def course_list(request):
     selected_department_id = request.GET.get('department')
 
     # Note: Only Admins can effectively use the department filter, as it's restricted for HODs
-    if selected_department_id and (user_profile.role == 'ADMIN' or user.is_superuser):
+    if selected_department_id and (user_profile.role == 'ADMIN' or request.user.is_superuser):
         courses_qs = courses_qs.filter(department__id=selected_department_id)
 
     if selected_semester_id:
@@ -2093,3 +2096,432 @@ def export_co_attainment_csv(request):
         )
 
     return response
+
+
+@login_required
+@user_passes_test(is_faculty) # This ensures only faculty can access
+def create_student_by_faculty(request):
+    if request.method == 'POST':
+        form = StudentCreationForm(request.POST)
+        if form.is_valid():
+            data = form.cleaned_data
+            try:
+                with transaction.atomic():
+                    # Create the User object
+                    user = User.objects.create_user(
+                        username=data['username'],
+                        password=data['password'],
+                        email=data['email'],
+                        first_name=data['first_name'],
+                        last_name=data['last_name']
+                    )
+                    # Create the associated UserProfile
+                    UserProfile.objects.create(
+                        user=user,
+                        role=UserRole.STUDENT,
+                        department=data['department']
+                    )
+                messages.success(request, f"Student '{data['username']}' created successfully.")
+                return redirect('home') # Redirect to dashboard after success
+            except Exception as e:
+                messages.error(request, f"An error occurred while creating the student: {e}")
+    else:
+        form = StudentCreationForm()
+
+    context = {
+        'form': form, 
+        'form_title': 'Create New Student'
+    }
+    return render(request, 'academics/create_student_form.html', context)
+
+
+# Update the permission check to include HODs and Admins
+@login_required
+@user_passes_test(is_faculty)
+def assignment_list(request):
+    assignments = Assignment.objects.filter(created_by=request.user.profile).select_related('course')
+    context = {
+        'assignments': assignments, 
+        'form_title': 'My Assignments'
+    }
+    return render(request, 'academics/assignment_list.html', context)
+
+
+@login_required
+@user_passes_test(is_faculty)
+def assignment_create(request):
+    if request.method == 'POST':
+        form = AssignmentForm(request.POST, user=request.user)
+        if form.is_valid():
+            assignment = form.save(commit=False)
+            assignment.created_by = request.user.profile
+            assignment.save()
+            messages.success(request, f"Assignment '{assignment.title}' created successfully.")
+            return redirect('assignment_list')
+    else:
+        form = AssignmentForm(user=request.user)
+        
+    return render(request, 'academics/assignment_form.html', {'form': form, 'form_title': 'Create New Assignment'})
+
+
+@login_required
+@user_passes_test(is_faculty)
+def assignment_update(request, pk):
+    # Ensure a faculty member can only edit their own assignments
+    assignment = get_object_or_404(Assignment, pk=pk, created_by=request.user.profile)
+    
+    if request.method == 'POST':
+        # Pass user to the form to scope the course/rubric dropdowns
+        form = AssignmentForm(request.POST, instance=assignment, user=request.user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"Assignment '{assignment.title}' updated successfully.")
+            return redirect('assignment_list')
+    else:
+        form = AssignmentForm(instance=assignment, user=request.user)
+        
+    return render(request, 'academics/assignment_form.html', {
+        'form': form, 
+        'form_title': f'Update Assignment: {assignment.title}'
+    })
+
+
+@login_required
+@user_passes_test(is_faculty)
+def assignment_delete(request, pk):
+    # Ensure a faculty member can only delete their own assignments
+    assignment = get_object_or_404(Assignment, pk=pk, created_by=request.user.profile)
+    
+    if request.method == 'POST':
+        assignment_title = assignment.title
+        assignment.delete()
+        messages.success(request, f"Assignment '{assignment_title}' has been deleted.")
+        return redirect('assignment_list')
+        
+    return render(request, 'academics/assignment_confirm_delete.html', {'assignment': assignment})
+
+
+
+@login_required
+@user_passes_test(is_faculty)
+def rubric_list(request):
+    rubrics = Rubric.objects.filter(created_by=request.user.profile)
+    return render(request, 'academics/rubric_list.html', {'rubrics': rubrics, 'form_title': 'My Rubrics'})
+
+@login_required
+@user_passes_test(is_faculty)
+def rubric_create(request):
+    if request.method == 'POST':
+        form = RubricForm(request.POST)
+        formset = RubricCriterionFormSet(request.POST, prefix='criteria')
+        if form.is_valid() and formset.is_valid():
+            with transaction.atomic():
+                rubric = form.save(commit=False)
+                rubric.created_by = request.user.profile
+                rubric.save()
+                formset.instance = rubric
+                formset.save()
+            messages.success(request, f"Rubric '{rubric.name}' created successfully.")
+            return redirect('rubric_list')
+    else:
+        form = RubricForm()
+        formset = RubricCriterionFormSet(prefix='criteria')
+        
+    return render(request, 'academics/rubric_form.html', {'form': form, 'formset': formset, 'form_title': 'Create New Rubric'})
+
+@login_required
+@user_passes_test(is_faculty)
+def rubric_update(request, pk):
+    # Ensure faculty can only edit their own rubrics
+    rubric = get_object_or_404(Rubric, pk=pk, created_by=request.user.profile)
+    
+    if request.method == 'POST':
+        form = RubricForm(request.POST, instance=rubric)
+        formset = RubricCriterionFormSet(request.POST, instance=rubric, prefix='criteria')
+        if form.is_valid() and formset.is_valid():
+            with transaction.atomic():
+                form.save()
+                formset.save()
+            messages.success(request, f"Rubric '{rubric.name}' updated successfully.")
+            return redirect('rubric_list')
+    else:
+        form = RubricForm(instance=rubric)
+        formset = RubricCriterionFormSet(instance=rubric, prefix='criteria')
+        
+    return render(request, 'academics/rubric_form.html', {
+        'form': form, 
+        'formset': formset, 
+        'form_title': f'Update Rubric: {rubric.name}'
+    })
+
+
+@login_required
+@user_passes_test(is_faculty)
+def rubric_delete(request, pk):
+    # Ensure faculty can only delete their own rubrics
+    rubric = get_object_or_404(Rubric, pk=pk, created_by=request.user.profile)
+    if request.method == 'POST':
+        rubric_name = rubric.name
+        rubric.delete()
+        messages.success(request, f"Rubric '{rubric_name}' has been deleted.")
+        return redirect('rubric_list')
+    return render(request, 'academics/rubric_confirm_delete.html', {'rubric': rubric})
+
+
+@login_required
+@user_passes_test(is_student)
+def student_assignment_list(request):
+    student_profile = request.user.profile
+    # Get all courses the student is enrolled in
+    enrolled_courses = student_profile.enrolled_courses.all()
+    # Get all assignments for those courses
+    assignments = Assignment.objects.filter(course__in=enrolled_courses).order_by('due_date')
+    
+    # Get submitted assignment IDs for this student to check status
+    submitted_assignments_ids = Submission.objects.filter(student=student_profile).values_list('assignment_id', flat=True)
+
+    context = {
+        'assignments': assignments,
+        'submitted_assignments_ids': submitted_assignments_ids,
+        'form_title': 'My Assignments'
+    }
+    return render(request, 'academics/student_assignment_list.html', context)
+
+
+@login_required
+@user_passes_test(is_student)
+def assignment_detail_and_submit(request, pk):
+    assignment = get_object_or_404(Assignment, pk=pk)
+    student_profile = request.user.profile
+    
+    # Security check: Ensure student is enrolled in the course for this assignment
+    if assignment.course not in student_profile.enrolled_courses.all():
+        messages.error(request, "You are not authorized to view this assignment.")
+        return redirect('student_assignment_list')
+
+    existing_submission = None
+    rubric_scores = None # Initialize as None
+    rubric_criteria = None # Initialize as None
+
+    # --- NEW: Fetch rubric criteria if the assignment is rubric-based ---
+    if assignment.assignment_type == 'rubric_based' and assignment.rubric:
+        rubric_criteria = RubricCriterion.objects.filter(rubric=assignment.rubric)
+
+
+    # Check if a submission already exists
+    try:
+        existing_submission = Submission.objects.get(assignment=assignment, student=student_profile)
+        if existing_submission:
+            rubric_scores = RubricScore.objects.filter(submission=existing_submission).select_related('criterion')
+    except Submission.DoesNotExist:
+        pass
+
+    if request.method == 'POST':
+        # Prevent re-submission
+        if existing_submission:
+            messages.warning(request, "You have already submitted this assignment.")
+            return redirect('assignment_detail_and_submit', pk=pk)
+
+        form = SubmissionForm(request.POST, request.FILES)
+        if form.is_valid():
+            submission = form.save(commit=False)
+            submission.assignment = assignment
+            submission.student = student_profile
+            submission.save()
+            messages.success(request, "Your assignment has been submitted successfully.")
+            return redirect('assignment_detail_and_submit', pk=pk)
+    else:
+        form = SubmissionForm()
+        
+    context = {
+        'assignment': assignment,
+        'form': form,
+        'existing_submission': existing_submission,
+        'rubric_scores': rubric_scores, # --- NEW: Add scores to context ---
+        'rubric_criteria': rubric_criteria, # --- NEW: Add criteria to context ---
+    }
+    return render(request, 'academics/student_assignment_detail.html', context)
+
+
+@login_required
+@user_passes_test(is_faculty)
+def submission_list_for_assignment(request, assignment_pk):
+    # The get_object_or_404 now includes the security check directly
+    assignment = get_object_or_404(Assignment, pk=assignment_pk, created_by=request.user.profile)
+    
+    # The rest of the view logic remains the same
+    enrolled_students = assignment.course.students.all().order_by('user__last_name', 'user__first_name')
+    submissions = Submission.objects.filter(assignment=assignment)
+    submissions_by_student = {submission.student.pk: submission for submission in submissions}
+    
+    student_submission_status = []
+    for student in enrolled_students:
+        student_submission_status.append({
+            'student_profile': student,
+            'submission': submissions_by_student.get(student.pk)
+        })
+        
+    context = {
+        'assignment': assignment,
+        'student_submission_status': student_submission_status,
+        'form_title': f"Submissions for: {assignment.title}"
+    }
+    return render(request, 'academics/submission_list.html', context)
+
+
+@login_required
+@user_passes_test(is_faculty)
+def grade_submission(request, assignment_pk, student_pk):
+    assignment = get_object_or_404(Assignment, pk=assignment_pk, created_by=request.user.profile)
+    student = get_object_or_404(UserProfile, pk=student_pk, role=UserRole.STUDENT)
+
+    if student not in assignment.course.students.all():
+        messages.error(request, "This student is not enrolled in the course for this assignment.")
+        return redirect('submission_list_for_assignment', assignment_pk=assignment.pk)
+
+    submission, created = Submission.objects.get_or_create(
+        assignment=assignment,
+        student=student
+    )
+    
+    is_rubric_based = assignment.assignment_type == 'rubric_based' and assignment.rubric
+    rubric_formset = None
+    RubricScoreFormSet = None
+    queryset = None # Define queryset outside the if block
+    rubric_data = None # This will hold our zipped data
+
+    if is_rubric_based:
+        # ============================ START OF THE CORRECTED FIX ============================
+        # For every criterion in the rubric, ensure a corresponding RubricScore object exists.
+        # This is robust and works whether the submission was just created or already existed.
+        criteria = assignment.rubric.criteria.all().order_by('order')
+        for criterion in criteria:
+            RubricScore.objects.get_or_create(
+                submission=submission,
+                criterion=criterion,
+                defaults={'score': 0}  # Provide default score only if creating
+            )
+        # ============================= END OF THE CORRECTED FIX =============================
+
+        # Now, define the formset using the guaranteed-to-exist scores
+        queryset = RubricScore.objects.filter(submission=submission).select_related('criterion').order_by('criterion__order')
+        RubricScoreFormSet = modelformset_factory(RubricScore, form=RubricScoreForm, extra=0)
+
+    if request.method == 'POST':
+        grading_form = GradingForm(request.POST, instance=submission)
+        if is_rubric_based:
+            rubric_formset = RubricScoreFormSet(request.POST, queryset=queryset, prefix='scores')
+            # Ensure criterion field is set in each form to avoid "required" error
+            for form, score_instance in zip(rubric_formset.forms, queryset):
+                form.instance.criterion = score_instance.criterion
+                form.initial['criterion'] = score_instance.criterion
+
+        if grading_form.is_valid() and (not is_rubric_based or rubric_formset.is_valid()):
+            with transaction.atomic():
+                graded_submission = grading_form.save(commit=False)
+                graded_submission.graded_by = request.user.profile
+                graded_submission.graded_at = timezone.now()
+                graded_submission.save()
+
+                if is_rubric_based:
+                    rubric_formset.save()
+            
+            messages.success(request, f"Grade for {student.user.username} has been saved.")
+            return redirect('submission_list_for_assignment', assignment_pk=assignment.pk)
+        else:
+            messages.error(request, "Please correct the errors below.")
+            if is_rubric_based:
+                rubric_data = zip(rubric_formset, queryset)
+    
+    else: # GET request
+        grading_form = GradingForm(instance=submission)
+        if is_rubric_based:
+            rubric_formset = RubricScoreFormSet(queryset=queryset, prefix='scores')
+            rubric_data = zip(rubric_formset, queryset)
+
+
+    context = {
+        'submission': submission,
+        'assignment': assignment,
+        'student': student,
+        'grading_form': grading_form,
+        'rubric_data': rubric_data,
+        'rubric_formset': rubric_formset, # Keep this for the management_form
+        'form_title': f'Grade Submission for {student.user.get_full_name()}'
+    }
+    return render(request, 'academics/grade_submission.html', context)
+
+
+@login_required
+@user_passes_test(is_admin_or_hod_or_faculty)
+def student_list(request):
+    user_profile = request.user.profile
+    
+    # Start with the base queryset for all students
+    student_profiles = UserProfile.objects.filter(role=UserRole.STUDENT).select_related('user', 'department').order_by('user__last_name', 'user__first_name')
+
+    # Determine permissions
+    can_edit_students = False
+    if user_profile.role == 'ADMIN' or user_profile.role == 'FACULTY':
+        can_edit_students = True
+
+    # Filter the list based on role
+    if user_profile.role == 'HOD':
+        try:
+            hod_academic_dept = AcademicDepartment.objects.get(hod=user_profile)
+            student_profiles = student_profiles.filter(department=hod_academic_dept.department)
+        except AcademicDepartment.DoesNotExist:
+            student_profiles = UserProfile.objects.none() # HOD not assigned
+    
+    elif user_profile.role == 'FACULTY':
+        # --- NEW, CORRECTED LOGIC FOR FACULTY ---
+        # Faculty sees students from the departments of the courses they teach.
+        
+        # Find all courses taught by this faculty member
+        taught_courses = user_profile.taught_courses.all()
+        
+        if taught_courses.exists():
+            # Get a unique list of department IDs from those courses
+            department_ids = taught_courses.values_list('department_id', flat=True).distinct()
+            # Filter students who belong to any of those departments
+            student_profiles = student_profiles.filter(department_id__in=department_ids)
+        else:
+            # If faculty is not assigned to any courses, they see no students
+            student_profiles = UserProfile.objects.none()
+
+    # Admins see all students, so no filter is applied.
+
+    context = {
+        'student_profiles': student_profiles,
+        'can_edit_students': can_edit_students,
+        'form_title': 'Student List'
+    }
+    return render(request, 'academics/student_list.html', context)
+
+
+@login_required
+@user_passes_test(is_faculty) # Only faculty can access this edit page
+def student_update_by_faculty(request, pk):
+    user_to_edit = get_object_or_404(User, pk=pk, profile__role=UserRole.STUDENT)
+    faculty_profile = request.user.profile
+
+    # Security Check: Ensure faculty can only edit students in their department(s)
+    faculty_departments = faculty_profile.taught_courses.values_list('department', flat=True).distinct()
+    if user_to_edit.profile.department_id not in faculty_departments:
+        messages.error(request, "You do not have permission to edit this student.")
+        return redirect('student_list')
+
+    if request.method == 'POST':
+        form = StudentUpdateByFacultyForm(request.POST, instance=user_to_edit)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"Student '{user_to_edit.username}' updated successfully.")
+            return redirect('student_list')
+    else:
+        form = StudentUpdateByFacultyForm(instance=user_to_edit)
+
+    context = {
+        'form': form,
+        'form_title': f'Update Student: {user_to_edit.username}'
+    }
+    return render(request, 'academics/student_form.html', context)

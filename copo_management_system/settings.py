@@ -132,3 +132,9 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles') # Or 'static_cdn' or 'collec
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+# Add these lines at the end for user-uploaded files (media)
+MEDIA_URL = '/submissions/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'submissions')
+

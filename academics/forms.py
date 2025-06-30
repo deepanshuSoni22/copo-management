@@ -12,7 +12,7 @@ from .models import (
     Assessment,
     StudentMark,
     Semester,
-    AcademicDepartment, CoursePlan, CourseObjective, WeeklyLessonPlan, CIAComponent
+    AcademicDepartment, CoursePlan, CourseObjective, WeeklyLessonPlan, CIAComponent, Rubric, RubricCriterion, Assignment, Submission, RubricScore
 )
 from users.models import UserProfile, UserRole  # Import UserProfile from the users app
 from django.forms import (
@@ -21,6 +21,7 @@ from django.forms import (
 )  # Import formset factories
 from django.forms import modelformset_factory
 from django.contrib.auth.models import User  # <--- ADD THIS LINE
+from django.forms import inlineformset_factory
 
 
 class AcademicYearForm(forms.ModelForm):
@@ -306,6 +307,15 @@ class CourseForm(forms.ModelForm):
         required=False,
         help_text="Select all faculty members assigned to teach this course.",
     )
+
+    # --- 1. ENSURE THIS FIELD IS DEFINED ---
+    students = forms.ModelMultipleChoiceField(
+        queryset=UserProfile.objects.filter(role=UserRole.STUDENT),
+        widget=forms.CheckboxSelectMultiple,
+        required=False,
+        label='Enrolled Students'
+    )
+
     # Assesses COs field (fixed from previous errors)
     assesses_cos = forms.ModelMultipleChoiceField(
         queryset=CourseOutcome.objects.all().select_related("course").order_by("course__code", "code"),
@@ -322,7 +332,7 @@ class CourseForm(forms.ModelForm):
 
     class Meta:
         model = Course
-        fields = ["name", "code", "department", "semester", "faculty", "assesses_cos"]
+        fields = ["name", "code", "department", "semester", "faculty", "assesses_cos", "students"]
         widgets = {
             "name": forms.TextInput(
                 attrs={
@@ -777,3 +787,183 @@ CIAComponentFormSet = inlineformset_factory(
     can_delete=True, # Allow deleting components
     fields=['order', 'component_name', 'units_covered', 'cos_covered']
 )
+
+
+class StudentCreationForm(forms.Form):
+    first_name = forms.CharField(max_length=150, required=True, widget=forms.TextInput(attrs={
+        "class": "mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base"
+        }))
+    last_name = forms.CharField(max_length=150, required=True, widget=forms.TextInput(attrs={
+        "class": "mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base"
+        }))
+    username = forms.CharField(max_length=150, required=True, widget=forms.TextInput(attrs={
+        "class": "mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base"
+        }))
+    email = forms.EmailField(required=True, widget=forms.EmailInput(attrs={
+        "class": "mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base"
+        }))
+    password = forms.CharField(widget=forms.PasswordInput(attrs={
+        "class": "mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base"
+        }), required=True)
+    department = forms.ModelChoiceField(queryset=Department.objects.all(), empty_label="Select Department", widget=forms.Select(attrs={
+        "class": "mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base"
+        }))
+
+    # Add appropriate styling classes to the widgets as needed to match your project
+
+    def clean_username(self):
+        username = self.cleaned_data.get('username')
+        if User.objects.filter(username=username).exists():
+            raise forms.ValidationError("A user with this username already exists.")
+        return username
+    
+
+class AssignmentForm(forms.ModelForm):
+    # Use a datetime-local widget for a better user experience in modern browsers
+    due_date = forms.DateTimeField(
+        widget=forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base'}),
+        label="Due Date"
+    )
+
+    class Meta:
+        model = Assignment
+        fields = ['title', 'description', 'course', 'assignment_type', 'due_date', 'rubric', 'cia_component']
+        # Apply standard styling to all widgets
+        widgets = {
+            'title': forms.TextInput(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm'}),
+            'description': forms.Textarea(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm', 'rows': 4}),
+            'course': forms.Select(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm'}),
+            'assignment_type': forms.Select(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm', 'id': 'id_assignment_type'}),
+            'rubric': forms.Select(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm'}),
+            'cia_component': forms.Select(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        # Pop the user object passed from the view to filter querysets
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+
+        if user and hasattr(user, 'profile'):
+            # Filter the 'course' dropdown to only show courses taught by this faculty member
+            self.fields['course'].queryset = Course.objects.filter(faculty=user.profile)
+            # Filter the 'rubric' dropdown to only show rubrics created by this faculty member
+            self.fields['rubric'].queryset = Rubric.objects.filter(created_by=user.profile)
+        
+        # Make rubric and cia_component not required by default
+        self.fields['rubric'].required = False
+        self.fields['cia_component'].required = False
+
+
+class RubricForm(forms.ModelForm):
+    class Meta:
+        model = Rubric
+        fields = ['name', 'description']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm'}),
+            'description': forms.Textarea(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm', 'rows': 3}),
+        }
+
+class RubricCriterionForm(forms.ModelForm):
+    class Meta:
+        model = RubricCriterion
+        fields = ['criterion_text', 'max_score', 'order']
+        widgets = {
+            'criterion_text': forms.TextInput(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm'}),
+            'max_score': forms.NumberInput(attrs={'class': 'mt-1 block w-24 px-4 py-2 border border-gray-300 rounded-lg shadow-sm'}),
+            'order': forms.NumberInput(attrs={'class': 'mt-1 block w-24 px-4 py-2 border border-gray-300 rounded-lg shadow-sm'}),
+        }
+
+# Formset for adding multiple criteria to a rubric at once
+RubricCriterionFormSet = inlineformset_factory(
+    Rubric,
+    RubricCriterion,
+    form=RubricCriterionForm,
+    extra=0, # Show 1 extra form by default
+    can_delete=True,
+    fields=['criterion_text', 'max_score', 'order']
+)
+
+
+class SubmissionForm(forms.ModelForm):
+    class Meta:
+        model = Submission
+        fields = ['file']
+        widgets = {
+            'file': forms.ClearableFileInput(attrs={'class': 'mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-violet-50 file:text-brand-purple hover:file:bg-violet-100'})
+        }
+
+
+class GradingForm(forms.ModelForm):
+    """Form for entering overall marks and feedback."""
+    class Meta:
+        model = Submission
+        fields = ['marks_obtained', 'feedback']
+        widgets = {
+            'marks_obtained': forms.NumberInput(attrs={'class': 'mt-1 block w-full px-4 py-2 border ...'}),
+            'feedback': forms.Textarea(attrs={'class': 'mt-1 block w-full px-4 py-2 border ...', 'rows': 4}),
+        }
+        labels = {
+            'marks_obtained': 'Overall Marks',
+            'feedback': 'General Feedback'
+        }
+
+class RubricScoreForm(forms.ModelForm):
+    class Meta:
+        model = RubricScore
+        fields = ['score', 'criterion']
+        widgets = {
+            'score': forms.NumberInput(attrs={
+                'class': 'block w-24 px-3 py-2 border border-gray-300 rounded-md shadow-sm'
+            }),
+            'criterion': forms.HiddenInput()  # This is critical
+        }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        score = cleaned_data.get('score')
+        criterion = cleaned_data.get('criterion')
+
+        if score is not None and criterion:
+            max_score = criterion.max_score
+            if score > max_score:
+                raise forms.ValidationError(
+                    f"Score cannot be greater than the maximum of {max_score}.",
+                    code='score_too_high'
+                )
+        return cleaned_data
+
+
+
+
+class StudentUpdateByFacultyForm(forms.ModelForm):
+    # We define the fields we want to manage from both User and UserProfile models
+    first_name = forms.CharField(max_length=150, required=True)
+    last_name = forms.CharField(max_length=150, required=True)
+    email = forms.EmailField(required=True)
+    department = forms.ModelChoiceField(queryset=Department.objects.all(), empty_label="Select Department")
+
+    class Meta:
+        model = User # The form is based on the User model
+        fields = ['first_name', 'last_name', 'email']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Pre-populate the department field from the student's existing profile
+        if self.instance and hasattr(self.instance, 'profile'):
+            self.fields['department'].initial = self.instance.profile.department
+        
+        # Apply styling to all fields
+        for field_name, field in self.fields.items():
+            field.widget.attrs['class'] = 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm'
+
+    def save(self, commit=True):
+        # Save the User model instance
+        user = super().save(commit=commit)
+        
+        # Now, update the related UserProfile model
+        user.profile.department = self.cleaned_data['department']
+        
+        if commit:
+            user.profile.save()
+            
+        return user
