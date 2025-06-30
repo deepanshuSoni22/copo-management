@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% block title %}{{ form_title }}{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-lg shadow-md p-6 max-w-2xl mx-auto">
+    <h1 class="text-2xl font-bold text-gray-800 mb-6 border-b pb-3">{{ form_title }}</h1>
+    <form method="post" class="space-y-6">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <div class="flex items-center space-x-4 pt-4 border-t">
+            <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-brand-purple hover:bg-brand-yellow hover:text-gray-900">
+                Save Assignment
+            </button>
+            <a href="{% url 'assignment_list' %}" class="inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                Cancel
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const assignmentTypeField = document.getElementById('id_assignment_type');
+    // Find the parent of the rubric select element, which is typically a <p> tag when using form.as_p
+    const rubricFieldContainer = document.getElementById('id_rubric').closest('p');
+
+    function toggleRubricField() {
+        if (rubricFieldContainer) {
+            if (assignmentTypeField.value === 'rubric_based') {
+                rubricFieldContainer.style.display = 'block';
+            } else {
+                rubricFieldContainer.style.display = 'none';
+            }
+        }
+    }
+    // Initial check on page load
+    toggleRubricField();
+    // Add event listener for changes
+    assignmentTypeField.addEventListener('change', toggleRubricField);
+});
+</script>
+{% endblock %}
