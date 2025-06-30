@@ -2099,15 +2099,15 @@ def export_co_attainment_csv(request):
 
 
 @login_required
-@user_passes_test(is_faculty) # This ensures only faculty can access
+@user_passes_test(is_faculty)
 def create_student_by_faculty(request):
     if request.method == 'POST':
-        form = StudentCreationForm(request.POST)
+        # Pass the user to the form to handle initial data for re-display on error
+        form = StudentCreationForm(request.POST, faculty_user=request.user)
         if form.is_valid():
             data = form.cleaned_data
             try:
                 with transaction.atomic():
-                    # Create the User object
                     user = User.objects.create_user(
                         username=data['username'],
                         password=data['password'],
@@ -2115,21 +2115,24 @@ def create_student_by_faculty(request):
                         first_name=data['first_name'],
                         last_name=data['last_name']
                     )
-                    # Create the associated UserProfile
+                    
+                    # IMPORTANT: Get the department securely from the logged-in faculty's profile
+                    # This prevents a user from maliciously changing the hidden form value.
                     UserProfile.objects.create(
                         user=user,
                         role=UserRole.STUDENT,
-                        department=data['department']
+                        department=request.user.profile.department 
                     )
                 messages.success(request, f"Student '{data['username']}' created successfully.")
-                return redirect('home') # Redirect to dashboard after success
+                return redirect('home')
             except Exception as e:
                 messages.error(request, f"An error occurred while creating the student: {e}")
     else:
-        form = StudentCreationForm()
+        # This part correctly passes the user to the form's __init__ method
+        form = StudentCreationForm(faculty_user=request.user)
 
     context = {
-        'form': form, 
+        'form': form,
         'form_title': 'Create New Student'
     }
     return render(request, 'academics/create_student_form.html', context)

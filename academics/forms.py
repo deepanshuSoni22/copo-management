@@ -805,11 +805,28 @@ class StudentCreationForm(forms.Form):
     password = forms.CharField(widget=forms.PasswordInput(attrs={
         "class": "mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base"
         }), required=True)
-    department = forms.ModelChoiceField(queryset=Department.objects.all(), empty_label="Select Department", widget=forms.Select(attrs={
-        "class": "mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base"
-        }))
+    # Define the department field with a standard Select widget
+    department = forms.ModelChoiceField(
+        queryset=Department.objects.all(),
+        widget=forms.Select(attrs={
+            "class": "mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm"
+        })
+    )
 
-    # Add appropriate styling classes to the widgets as needed to match your project
+    def __init__(self, *args, **kwargs):
+        faculty_user = kwargs.pop('faculty_user', None)
+        super().__init__(*args, **kwargs)
+
+        # Pre-fill and DISABLE the department field based on the logged-in faculty
+        if faculty_user and hasattr(faculty_user, 'profile'):
+            dept = faculty_user.profile.department
+            if dept:
+                # Limit the choices to ONLY the faculty's department
+                self.fields['department'].queryset = Department.objects.filter(pk=dept.pk)
+                # Set the initial selection
+                self.fields['department'].initial = dept
+                # **This is the key: disable the field**
+                self.fields['department'].disabled = True
 
     def clean_username(self):
         username = self.cleaned_data.get('username')
