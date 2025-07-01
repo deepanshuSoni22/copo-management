@@ -99,8 +99,6 @@ class Semester(models.Model):
         ordering = ['-academic_department__academic_year__start_date', 'order']
 
 
-
-
 class ProgramOutcome(models.Model):
     code = models.CharField(max_length=20, unique=True, help_text="e.g., PO1, PO2")
     description = models.TextField()
@@ -113,6 +111,11 @@ class ProgramOutcome(models.Model):
         verbose_name_plural = "Program Outcomes"
         ordering = ["code"]  # Order by code (e.g., PO1, PO2)
 
+
+class CourseType(models.TextChoices):
+    THEORY = 'THEORY', 'Theory'
+    PRACTICAL = 'PRACTICAL', 'Practical'
+    INTEGRATED = 'INTEGRATED', 'Integrated'
 
 class Course(models.Model):
     name = models.CharField(max_length=200)
@@ -149,6 +152,23 @@ class Course(models.Model):
         limit_choices_to={'role': 'STUDENT'}
     )
 
+    # --- NEW FIELDS FROM PDF ---
+    course_type = models.CharField(
+        max_length=20,
+        choices=CourseType.choices,
+        default=CourseType.THEORY,
+        help_text="The type of the course, e.g., Theory or Practical"
+    ) # 
+    credits = models.PositiveIntegerField(
+        default=4,
+        help_text="Number of credits for the course"
+    ) # 
+    prerequisites = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Knowledge or skills required before taking this course"
+    ) #
+
     def __str__(self):
         if self.semester and self.semester.academic_department and self.semester.academic_department.academic_year:
             year = self.semester.academic_department.academic_year
@@ -170,7 +190,6 @@ class Course(models.Model):
         )  # A course code should be unique per semester
         # CHANGED: Update ordering to use semester's academic_department and then academic_year
         ordering = ["semester__academic_department__academic_year__start_date", "semester__order", "code"]
-
         
 
 class CourseOutcome(models.Model):
@@ -182,6 +201,14 @@ class CourseOutcome(models.Model):
     )
     code = models.CharField(max_length=20, help_text="e.g., CO1, CO2")
     description = models.TextField()
+
+    # --- NEW FIELDS FOR REVISED BLOOM'S TAXONOMY (RBT) ---
+    rbt_level_1 = models.BooleanField(default=False, verbose_name="RBT 1 (Remember)")
+    rbt_level_2 = models.BooleanField(default=False, verbose_name="RBT 2 (Understand)")
+    rbt_level_3 = models.BooleanField(default=False, verbose_name="RBT 3 (Apply)")
+    rbt_level_4 = models.BooleanField(default=False, verbose_name="RBT 4 (Analyze)")
+    rbt_level_5 = models.BooleanField(default=False, verbose_name="RBT 5 (Evaluate)")
+    rbt_level_6 = models.BooleanField(default=False, verbose_name="RBT 6 (Create)")
 
     def __str__(self):
         return f"{self.course.code} - {self.code}: {self.description[:50]}..."
@@ -404,6 +431,14 @@ class CoursePlan(models.Model):
         blank=True,
         help_text="Other instructors assigned to this course (if any)."
     )
+
+    # --- THIS IS THE MISSING FIELD THAT CAUSED THE ERROR ---
+    assessment_ratio = models.CharField(
+        max_length=20,
+        blank=True,
+        null=True,
+        help_text="The ratio of internal to external assessment marks, e.g., 60:40"
+    )
     
     # Administrative details
     created_by = models.ForeignKey( # Typically the HOD who created the plan
@@ -471,7 +506,7 @@ class WeeklyLessonPlan(models.Model):
     class Meta:
         verbose_name = "Weekly Lesson Plan"
         verbose_name_plural = "Weekly Lesson Plans"
-        unique_together = ('course_plan', 'unit_number') # Unit number should be unique within a plan
+        unique_together = ('course_plan', 'order') # Unit number should be unique within a plan
         ordering = ['order']
 
 

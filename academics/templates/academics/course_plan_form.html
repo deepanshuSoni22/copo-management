@@ -53,6 +53,13 @@
                     {% endif %}
                 </div>
                 <div>
+                    <label for="{{ course_plan_form.assessment_ratio.id_for_label }}" class="block text-sm font-medium text-gray-default mb-1">{{ course_plan_form.assessment_ratio.label }}</label>
+                    {{ course_plan_form.assessment_ratio }}
+                    {% if course_plan_form.assessment_ratio.errors %}
+                        <p class="mt-2 text-sm text-red-600">{{ course_plan_form.assessment_ratio.errors.as_text }}</p>
+                    {% endif %}
+                </div>
+                <div>
                     <label for="{{ course_plan_form.course_coordinator.id_for_label }}" class="block text-sm font-medium text-gray-default mb-1">{{ course_plan_form.course_coordinator.label }}</label>
                     {{ course_plan_form.course_coordinator }}
                     {% if course_plan_form.course_coordinator.errors %}

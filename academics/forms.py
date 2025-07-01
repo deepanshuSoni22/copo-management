@@ -332,7 +332,7 @@ class CourseForm(forms.ModelForm):
 
     class Meta:
         model = Course
-        fields = ["name", "code", "department", "semester", "faculty", "assesses_cos", "students"]
+        fields = ["name", "code", "department", "semester", "faculty", "assesses_cos", "students", "course_type", "credits", "prerequisites"]
         widgets = {
             "name": forms.TextInput(
                 attrs={
@@ -344,6 +344,9 @@ class CourseForm(forms.ModelForm):
                     "class": "mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base"
                 }
             ),
+            "course_type": forms.Select(attrs={"class": "mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base"}),
+            "credits": forms.NumberInput(attrs={"class": "mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base"}),
+            "prerequisites": forms.Textarea(attrs={"class": "mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base", "rows": 3}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -433,7 +436,9 @@ class CourseOutcomeForm(forms.ModelForm):
 
     class Meta:
         model = CourseOutcome
-        fields = ["course", "code", "description"]
+        fields = ["course", "code", "description", 
+                "rbt_level_1", "rbt_level_2", "rbt_level_3", "rbt_level_4", "rbt_level_5", "rbt_level_6"
+                ]
         widgets = {
             "code": forms.TextInput(
                 attrs={
@@ -670,10 +675,11 @@ class CoursePlanForm(forms.ModelForm):
     class Meta:
         model = CoursePlan
         # Note: 'course' field is automatically handled by ModelForm due to primary_key=True on the model
-        fields = ['title', 'description', 'course_coordinator', 'instructors']
+        fields = ['title', 'description', 'course_coordinator', 'instructors', 'assessment_ratio']
         widgets = {
             'title': forms.TextInput(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base'}),
             'description': forms.Textarea(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base', 'rows': 4}),
+            'assessment_ratio': forms.TextInput(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base', 'placeholder': 'e.g., 60:40'}),
         }
 
     # --- UPDATED __init__ METHOD ---
@@ -724,7 +730,6 @@ CourseObjectiveFormSet = inlineformset_factory(
     can_delete=True,   # Allow deleting objectives
     fields=['order', 'unit_number', 'objective_text']
 )
-
 
 class WeeklyLessonPlanForm(forms.ModelForm):
     class Meta:

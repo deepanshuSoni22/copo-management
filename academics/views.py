@@ -653,7 +653,6 @@ def course_plan_update(request, pk):
             return redirect('course_plan_list')
             
     course_outcomes_for_this_course = CourseOutcome.objects.filter(course=course_plan.course)
-
     # Define the form kwargs dictionary based on permission
     objective_and_cia_kwargs = {'can_edit': is_hod_or_admin}
     cia_kwargs = {'cos_queryset': course_outcomes_for_this_course, 'can_edit': is_hod_or_admin}
@@ -683,7 +682,6 @@ def course_plan_update(request, pk):
             messages.error(request, 'Please correct the errors below.')
     else:  # GET request
         form = CoursePlanForm(instance=course_plan, can_edit_full_plan=is_hod_or_admin)
-        
         # --- UPDATED: Pass form_kwargs to the relevant formsets ---
         objective_formset = CourseObjectiveFormSet(instance=course_plan, prefix='objectives', form_kwargs=objective_and_cia_kwargs)
         lesson_formset = WeeklyLessonPlanFormSet(instance=course_plan, prefix='lessons') # Remains editable

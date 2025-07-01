@@ -13,7 +13,9 @@ from .models import (
     CourseOutcomeAttainment,
     ProgramOutcomeAttainment,
     Semester,
-    AcademicDepartment
+    AcademicDepartment,
+    WeeklyLessonPlan,
+    CoursePlan,
 )
 from users.models import (
     UserProfile,
@@ -90,7 +92,7 @@ class ProgramOutcomeAdmin(admin.ModelAdmin):
 @admin.register(Course)
 class CourseAdmin(admin.ModelAdmin):
     # CHANGED: 'academic_year' replaced by 'semester' in list_display
-    list_display = ("code", "name", "department", "semester", "display_faculty")
+    list_display = ("code", "name", "department", "semester", "credits", "course_type", "display_faculty")
     # CHANGED: list_filter now uses 'semester__academic_department__academic_year' and 'semester'
     list_filter = ("department", "semester__academic_department__academic_year", "semester", "faculty")
     # CHANGED: search_fields now uses 'semester__academic_department__academic_year__start_date__year'
@@ -128,6 +130,7 @@ class CourseOutcomeAdmin(admin.ModelAdmin):
         "course",
         "get_course_department",
         "get_course_academic_year",
+        "rbt_level_1", "rbt_level_2", "rbt_level_3", "rbt_level_4", "rbt_level_5", "rbt_level_6", # Add more as needed
     )
     # CHANGED: list_filter now uses 'course__semester__academic_department__academic_year'
     list_filter = ("course__department", "course__semester__academic_department__academic_year", "course")
@@ -325,3 +328,22 @@ class ProgramOutcomeAttainmentAdmin(admin.ModelAdmin):
     )
     raw_id_fields = ("program_outcome", "academic_year") # Keep AY
     autocomplete_fields = ["program_outcome", "academic_year"] # Keep AY
+
+
+# --- ADD THIS NEW ADMIN REGISTRATION ---
+@admin.register(WeeklyLessonPlan)
+class WeeklyLessonPlanAdmin(admin.ModelAdmin):
+    list_display = ('course_plan', 'unit_number', 'week_dates', 'order')
+    list_filter = ('course_plan__course__department',)
+    search_fields = ('unit_details', 'course_plan__course__code')
+    ordering = ('course_plan', 'order')
+
+
+# --- ADD THIS NEW ADMIN REGISTRATION FOR COURSEPLAN ---
+@admin.register(CoursePlan)
+class CoursePlanAdmin(admin.ModelAdmin):
+    list_display = ('course', 'title', 'course_coordinator', 'assessment_ratio')
+    search_fields = ('course__code', 'course__name', 'title')
+    list_filter = ('course__department',)
+    raw_id_fields = ('course', 'course_coordinator')
+    filter_horizontal = ('instructors',)
