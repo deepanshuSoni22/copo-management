@@ -303,7 +303,7 @@ class CourseForm(forms.ModelForm):
                 "class": "faculty-checkbox-list" # We'll style this with CSS
             }
         ),
-        label="Assigned Faculty",
+        label="Assign Faculty",
         required=False,
         help_text="Select all faculty members assigned to teach this course.",
     )
@@ -313,7 +313,7 @@ class CourseForm(forms.ModelForm):
         queryset=UserProfile.objects.filter(role=UserRole.STUDENT),
         widget=forms.CheckboxSelectMultiple,
         required=False,
-        label='Enrolled Students'
+        label='Enroll Students'
     )
 
     # Assesses COs field (fixed from previous errors)
@@ -352,7 +352,10 @@ class CourseForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         self.request = kwargs.pop('request', None) # Pop request out of kwargs
         super().__init__(*args, **kwargs)
-
+        self.fields['name'].label = "Course Name"
+        self.fields['code'].label = "Course Code"
+        self.fields['credits'].label = "Course Credits"
+        
         # HOD restriction logic
         if self.request and self.request.user.profile.role == 'HOD':
             try:

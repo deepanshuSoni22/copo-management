@@ -20,6 +20,7 @@ from .models import (
 from users.models import (
     UserProfile,
 )  # Import UserProfile if needed for custom admin (e.g. Department HOD display)
+from django import forms
 
 
 # --- Academic Year Admin ---
@@ -88,9 +89,22 @@ class ProgramOutcomeAdmin(admin.ModelAdmin):
     ordering = ["code"]
 
 
+class CourseAdminForm(forms.ModelForm):
+    class Meta:
+        model = Course
+        fields = "__all__"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['name'].label = "Course Name"
+        self.fields['code'].label = "Course Code"
+        self.fields['credits'].label = "Course Credits"
+
 # --- Course Admin ---
 @admin.register(Course)
 class CourseAdmin(admin.ModelAdmin):
+    form = CourseAdminForm  # <-- attach the form here
+
     # CHANGED: 'academic_year' replaced by 'semester' in list_display
     list_display = ("code", "name", "department", "semester", "credits", "course_type", "display_faculty")
     # CHANGED: list_filter now uses 'semester__academic_department__academic_year' and 'semester'

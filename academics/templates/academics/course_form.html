@@ -55,6 +55,30 @@
             {# --- END UPDATED --- #}
 
             <div>
+                <label for="{{ form.course_type.id_for_label }}" class="block text-sm font-medium text-gray-default mb-1">{{ form.course_type.label }}</label>
+                {{ form.course_type }}
+                {% if form.course_type.errors %}
+                    <p class="mt-2 text-sm text-red-600">{{ form.course_type.errors.as_text }}</p>
+                {% endif %}
+            </div>
+
+            <div>
+                <label for="{{ form.credits.id_for_label }}" class="block text-sm font-medium text-gray-default mb-1">{{ form.credits.label }}</label>
+                {{ form.credits }}
+                {% if form.credits.errors %}
+                    <p class="mt-2 text-sm text-red-600">{{ form.credits.errors.as_text }}</p>
+                {% endif %}
+            </div>
+
+            <div>
+                <label for="{{ form.prerequisites.id_for_label }}" class="block text-sm font-medium text-gray-default mb-1">{{ form.prerequisites.label }}</label>
+                {{ form.prerequisites }}
+                {% if form.prerequisites.errors %}
+                    <p class="mt-2 text-sm text-red-600">{{ form.prerequisites.errors.as_text }}</p>
+                {% endif %}
+            </div>
+
+            <div>
                 <label for="{{ form.faculty.id_for_label }}" class="block text-sm font-medium text-gray-default mb-1">{{ form.faculty.label }}</label>
                 <div class="max-h-72 overflow-y-auto border border-gray-300 rounded-md p-3 space-y-2">
                     {% for checkbox in form.faculty %}
