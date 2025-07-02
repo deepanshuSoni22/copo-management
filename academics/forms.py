@@ -22,6 +22,7 @@ from django.forms import (
 from django.forms import modelformset_factory
 from django.contrib.auth.models import User  # <--- ADD THIS LINE
 from django.forms import inlineformset_factory
+from django.contrib.auth.forms import UserCreationForm
 
 
 class AcademicYearForm(forms.ModelForm):
@@ -308,14 +309,6 @@ class CourseForm(forms.ModelForm):
         help_text="Select all faculty members assigned to teach this course.",
     )
 
-    # --- 1. ENSURE THIS FIELD IS DEFINED ---
-    students = forms.ModelMultipleChoiceField(
-        queryset=UserProfile.objects.filter(role=UserRole.STUDENT),
-        widget=forms.CheckboxSelectMultiple,
-        required=False,
-        label='Enroll Students'
-    )
-
     # Assesses COs field (fixed from previous errors)
     assesses_cos = forms.ModelMultipleChoiceField(
         queryset=CourseOutcome.objects.all().select_related("course").order_by("course__code", "code"),
@@ -332,7 +325,7 @@ class CourseForm(forms.ModelForm):
 
     class Meta:
         model = Course
-        fields = ["name", "code", "department", "semester", "faculty", "assesses_cos", "students", "course_type", "credits", "prerequisites"]
+        fields = ["name", "code", "department", "semester", "faculty", "assesses_cos", "course_type", "credits", "prerequisites"]
         widgets = {
             "name": forms.TextInput(
                 attrs={
@@ -797,7 +790,7 @@ CIAComponentFormSet = inlineformset_factory(
 )
 
 
-class StudentCreationForm(forms.Form):
+class StudentCreationForm(UserCreationForm):
     first_name = forms.CharField(max_length=150, required=True, widget=forms.TextInput(attrs={
         "class": "mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base"
         }))
@@ -810,9 +803,6 @@ class StudentCreationForm(forms.Form):
     email = forms.EmailField(required=True, widget=forms.EmailInput(attrs={
         "class": "mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base"
         }))
-    password = forms.CharField(widget=forms.PasswordInput(attrs={
-        "class": "mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base"
-        }), required=True)
     # Define the department field with a standard Select widget
     department = forms.ModelChoiceField(
         queryset=Department.objects.all(),
@@ -821,26 +811,59 @@ class StudentCreationForm(forms.Form):
         })
     )
 
+    # --- START: EXPLICITLY DEFINE PASSWORD FIELDS FOR STYLING ---
+    password1 = forms.CharField(
+        label="Password",
+        widget=forms.PasswordInput(attrs={
+            'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm',
+            'autocomplete': 'new-password',
+        })
+    )
+    password2 = forms.CharField(
+        label="Password confirmation",
+        strip=False,
+        widget=forms.PasswordInput(attrs={
+            'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm',
+            'autocomplete': 'new-password',
+        }),
+    )
+    # --- END: EXPLICITLY DEFINE PASSWORD FIELDS ---
+
+    class Meta(UserCreationForm.Meta):
+        model = User
+        # Add our custom fields to the list of fields from the parent form
+        fields = UserCreationForm.Meta.fields + ('first_name', 'last_name', 'email')
+
+
     def __init__(self, *args, **kwargs):
-        faculty_user = kwargs.pop('faculty_user', None)
+        # Pop the faculty_user passed from the view
+        self.faculty_user = kwargs.pop('faculty_user', None)
         super().__init__(*args, **kwargs)
 
-        # Pre-fill and DISABLE the department field based on the logged-in faculty
-        if faculty_user and hasattr(faculty_user, 'profile'):
-            dept = faculty_user.profile.department
+        if self.faculty_user and hasattr(self.faculty_user, 'profile'):
+            dept = self.faculty_user.profile.department
             if dept:
-                # Limit the choices to ONLY the faculty's department
+                # Set the dropdown to only contain the faculty's department
                 self.fields['department'].queryset = Department.objects.filter(pk=dept.pk)
-                # Set the initial selection
+                # Pre-select that department
                 self.fields['department'].initial = dept
-                # **This is the key: disable the field**
+                # Disable the field to make it non-changeable (greyed out)
                 self.fields['department'].disabled = True
+                self.fields['department'].widget.attrs['class'] += ' bg-gray-100 cursor-not-allowed'
 
     def clean_username(self):
         username = self.cleaned_data.get('username')
         if User.objects.filter(username=username).exists():
             raise forms.ValidationError("A user with this username already exists.")
         return username
+
+    def clean(self):
+        cleaned_data = super().clean()
+        # When a field is disabled, its value is not sent in the POST data.
+        # We must re-insert it into the cleaned_data from the faculty's profile.
+        if self.fields['department'].disabled:
+            cleaned_data['department'] = self.faculty_user.profile.department
+        return cleaned_data
     
 
 class AssignmentForm(forms.ModelForm):
@@ -1042,7 +1065,13 @@ class EnrollStudentForm(forms.Form):
 
         # If a user is provided, filter the courses to only those they teach
         if user and hasattr(user, 'profile'):
-            self.fields['course'].queryset = Course.objects.filter(faculty=user.profile).order_by('code')
+            profile = user.profile
+            if profile.role == 'FACULTY':
+                # Faculty can only enroll students in courses they teach
+                self.fields['course'].queryset = profile.taught_courses.all().order_by('code')
+            else:
+                # Admins or HODs see all courses
+                self.fields['course'].queryset = Course.objects.all().order_by('code')
 
 
 # --- ADD THIS NEW FORM AT THE END OF THE FILE ---

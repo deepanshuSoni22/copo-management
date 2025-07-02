@@ -321,14 +321,18 @@ def department_delete(request, pk):
 @user_passes_test(is_admin_or_hod, login_url='/accounts/login/') # Admin or HOD can manage AcademicDepartments
 def academic_department_list(request):
     academic_departments = AcademicDepartment.objects.all().select_related('department', 'academic_year', 'hod__user').order_by('-academic_year__start_date', 'department__name')
+    
+    can_manage_depts = is_admin(request.user)
+
     context = {
         'academic_departments': academic_departments,
         'form_title': 'Academic Departments',
+        'can_manage_depts': can_manage_depts, # Pass the flag to the template
     }
     return render(request, 'academics/academic_department_list.html', context)
 
 @login_required
-@user_passes_test(is_admin_or_hod, login_url='/accounts/login/')
+@user_passes_test(is_admin, login_url='/accounts/login/')
 def academic_department_create(request):
     if request.method == 'POST':
         form = AcademicDepartmentForm(request.POST)
@@ -358,7 +362,7 @@ def academic_department_create(request):
     return render(request, 'academics/academic_department_form.html', context)
 
 @login_required
-@user_passes_test(is_admin_or_hod, login_url='/accounts/login/')
+@user_passes_test(is_admin, login_url='/accounts/login/')
 def academic_department_update(request, pk):
     academic_department = get_object_or_404(AcademicDepartment, pk=pk)
     if request.method == 'POST':
@@ -378,7 +382,7 @@ def academic_department_update(request, pk):
     return render(request, 'academics/academic_department_form.html', context)
 
 @login_required
-@user_passes_test(is_admin_or_hod, login_url='/accounts/login/')
+@user_passes_test(is_admin, login_url='/accounts/login/')
 def academic_department_delete(request, pk):
     academic_department = get_object_or_404(AcademicDepartment, pk=pk)
     if request.method == 'POST':
@@ -975,28 +979,37 @@ def course_delete(request, pk):
 @login_required
 @user_passes_test(is_admin_or_hod_or_faculty, login_url="/accounts/login/")
 def course_outcome_list(request):
-    # Only show COs for courses the user is assigned to if they are faculty
-    if is_faculty(request.user) and not is_admin_or_hod(request.user):
-        # Get courses taught by the current faculty
-        user_profile = request.user.profile
+    user_profile = request.user.profile
+    
+    # --- START OF NEW LOGIC ---
+    # Determine the base querysets for filtering and listing, based on user role
+    if is_admin(request.user) or is_hod(request.user):
+        # Admin/HOD can see all courses and COs
+        courses_for_filter = Course.objects.all().order_by("code")
+        course_outcomes = CourseOutcome.objects.all()
+    else: # is_faculty
+        # Faculty can only see courses they teach and COs for those courses
         taught_courses = user_profile.taught_courses.all()
-        course_outcomes = (
-            CourseOutcome.objects.filter(course__in=taught_courses)
-            .select_related("course")
-            .order_by("course__code", "code")
-        )
-    else:  # Admin or HOD sees all
-        course_outcomes = (
-            CourseOutcome.objects.all()
-            .select_related("course")
-            .order_by("course__code", "code")
-        )
+        courses_for_filter = taught_courses.order_by("code")
+        course_outcomes = CourseOutcome.objects.filter(course__in=taught_courses)
 
-    return render(
-        request,
-        "academics/course_outcome_list.html",
-        {"course_outcomes": course_outcomes},
-    )
+    # Get the selected course ID from the URL's GET parameters
+    selected_course_id = request.GET.get('course')
+
+    # If a course is selected in the filter, apply it to the queryset
+    if selected_course_id:
+        course_outcomes = course_outcomes.filter(course_id=selected_course_id)
+    # --- END OF NEW LOGIC ---
+
+    context = {
+        # Optimize the final query and pass it to the context
+        'course_outcomes': course_outcomes.select_related("course").order_by("course__code", "code"),
+        # Pass the necessary data for the filter dropdown
+        'all_courses': courses_for_filter,
+        'selected_course_id': selected_course_id,
+        'form_title': 'Course Outcomes' # Add form_title to context
+    }
+    return render(request, "academics/course_outcome_list.html", context)
 
 
 @login_required
@@ -2106,14 +2119,7 @@ def create_student_by_faculty(request):
             data = form.cleaned_data
             try:
                 with transaction.atomic():
-                    user = User.objects.create_user(
-                        username=data['username'],
-                        password=data['password'],
-                        email=data['email'],
-                        first_name=data['first_name'],
-                        last_name=data['last_name']
-                    )
-                    
+                    user = form.save() 
                     # IMPORTANT: Get the department securely from the logged-in faculty's profile
                     # This prevents a user from maliciously changing the hidden form value.
                     UserProfile.objects.create(
@@ -2121,8 +2127,8 @@ def create_student_by_faculty(request):
                         role=UserRole.STUDENT,
                         department=request.user.profile.department 
                     )
-                messages.success(request, f"Student '{data['username']}' created successfully.")
-                return redirect('home')
+                messages.success(request, f"Student '{user.username}' created successfully.")
+                return redirect('student_list')
             except Exception as e:
                 messages.error(request, f"An error occurred while creating the student: {e}")
     else:
