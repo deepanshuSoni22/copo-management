@@ -17,7 +17,7 @@ from .forms import (
     StudentMarkFormSet,
     AcademicDepartmentForm,
     SemesterForm, CoursePlanForm, CourseObjectiveFormSet, WeeklyLessonPlanFormSet, CIAComponentFormSet, StudentCreationForm, RubricForm, RubricCriterionFormSet, AssignmentForm, RubricScore,
-    SubmissionForm, GradingForm, RubricScoreForm, StudentUpdateByFacultyForm
+    SubmissionForm, GradingForm, RubricScoreForm, StudentUpdateByFacultyForm, EnrollStudentForm, BulkEnrollmentForm
 )  # Form
 
 # Import models and forms
@@ -2565,3 +2565,53 @@ def student_delete_by_faculty(request, pk):
         'form_title': f'Delete Student: {user_to_delete.username}'
     }
     return render(request, 'academics/student_confirm_delete.html', context)
+
+
+# --- ADD THIS ENTIRE NEW VIEW ---
+@login_required
+@user_passes_test(is_faculty) # Only faculty or admins (who are also faculty) can enroll
+def enroll_student_view(request, student_pk):
+    student_profile = get_object_or_404(UserProfile, user__pk=student_pk, role=UserRole.STUDENT)
+    
+    if request.method == 'POST':
+        form = EnrollStudentForm(request.POST, user=request.user)
+        if form.is_valid():
+            course = form.cleaned_data['course']
+            # Add the student to the course's ManyToMany relationship
+            course.students.add(student_profile)
+            messages.success(request, f"Successfully enrolled {student_profile.user.username} in {course.code}.")
+            return redirect('student_list')
+    else:
+        form = EnrollStudentForm(user=request.user)
+
+    context = {
+        'form': form,
+        'student_profile': student_profile,
+        'form_title': f"Enroll {student_profile.user.username}"
+    }
+    return render(request, 'academics/enroll_student_form.html', context)
+
+
+# --- ADD THIS ENTIRE NEW VIEW ---
+@login_required
+@user_passes_test(is_admin_or_hod_or_faculty) # Permissions for who can access this page
+def bulk_enrollment_view(request):
+    if request.method == 'POST':
+        form = BulkEnrollmentForm(request.POST, user=request.user)
+        if form.is_valid():
+            course = form.cleaned_data['course']
+            students_to_enroll = form.cleaned_data['students']
+
+            # Use the .add() method with the splat operator to add all students at once
+            course.students.add(*students_to_enroll)
+            
+            messages.success(request, f"Successfully enrolled {students_to_enroll.count()} student(s) in {course.code}.")
+            return redirect('bulk_enrollment') # Redirect to the same page to perform another action
+    else:
+        form = BulkEnrollmentForm(user=request.user)
+
+    context = {
+        'form': form,
+        'form_title': "Bulk Enroll Students in a Course"
+    }
+    return render(request, 'academics/bulk_enrollment_form.html', context)

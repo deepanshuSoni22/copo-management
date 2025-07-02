@@ -900,6 +900,10 @@ video {
   max-height: 18rem;
 }
 
+.max-h-96{
+  max-height: 24rem;
+}
+
 .min-h-screen{
   min-height: 100vh;
 }
@@ -1027,6 +1031,14 @@ video {
 
 .resize{
   resize: both;
+}
+
+.list-inside{
+  list-style-position: inside;
+}
+
+.list-disc{
+  list-style-type: disc;
 }
 
 .grid-cols-1{

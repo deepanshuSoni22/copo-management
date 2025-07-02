@@ -1,3 +1,4 @@
+{# academics/templates/academics/student_list.html #}
 {% extends 'base.html' %}
 {% block title %}{{ form_title }}{% endblock %}
 
@@ -35,6 +36,7 @@
                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             {% if can_edit_students %}
                                 <a href="{% url 'student_update_by_faculty' profile.user.pk %}" class="text-indigo-600 hover:text-indigo-900">Edit</a>
+                                <a href="{% url 'enroll_student' profile.user.pk %}" class="text-green-600 hover:text-green-900 ml-4">Enroll</a>
                                 <a href="{% url 'student_delete_by_faculty' profile.user.pk %}" class="text-red-600 hover:text-red-900 ml-4">Delete</a>
                             {% endif %}
                         </td>
@@ -52,6 +54,7 @@
                     <div class="mt-4 pt-2 border-t flex justify-end space-x-4">
                         {% if can_edit_students %}
                             <a href="{% url 'student_update_by_faculty' profile.user.pk %}" class="text-sm font-medium text-indigo-600 hover:text-indigo-900">Edit</a>
+                            <a href="{% url 'enroll_student' profile.user.pk %}" class="text-sm font-medium text-green-600 hover:text-green-900">Enroll</a>
                             <a href="{% url 'student_delete_by_faculty' profile.user.pk %}" class="text-sm font-medium text-red-600 hover:text-red-900">Delete</a>
                         {% endif %}
                     </div>

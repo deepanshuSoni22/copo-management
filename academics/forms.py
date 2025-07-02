@@ -1024,3 +1024,60 @@ class StudentUpdateByFacultyForm(forms.ModelForm):
             user.profile.save()
             
         return user
+
+
+# --- ADD THIS NEW FORM AT THE END OF THE FILE ---
+class EnrollStudentForm(forms.Form):
+    """A form for selecting a course to enroll a single student into."""
+    course = forms.ModelChoiceField(
+        queryset=Course.objects.all(),
+        label="Select Course to Enroll Student In",
+        widget=forms.Select(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm'})
+    )
+
+    def __init__(self, *args, **kwargs):
+        # Pop a 'user' kwarg to filter the course list
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+
+        # If a user is provided, filter the courses to only those they teach
+        if user and hasattr(user, 'profile'):
+            self.fields['course'].queryset = Course.objects.filter(faculty=user.profile).order_by('code')
+
+
+# --- ADD THIS NEW FORM AT THE END OF THE FILE ---
+class BulkEnrollmentForm(forms.Form):
+    """
+    A form for selecting a course and multiple students for bulk enrollment.
+    """
+    course = forms.ModelChoiceField(
+        queryset=Course.objects.all(),
+        label="Select a Course",
+        widget=forms.Select(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm'})
+    )
+    students = forms.ModelMultipleChoiceField(
+        queryset=UserProfile.objects.filter(role=UserRole.STUDENT),
+        widget=forms.CheckboxSelectMultiple,
+        label="Select Students to Enroll",
+        required=True
+    )
+
+    def __init__(self, *args, **kwargs):
+        # Pop the user object to filter querysets based on permissions
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+
+        if user and hasattr(user, 'profile'):
+            profile = user.profile
+            # Admins see all courses and all students
+            if profile.role == 'HOD':
+                # HODs see courses and students from their department only
+                hod_department = profile.department
+                self.fields['course'].queryset = Course.objects.filter(department=hod_department)
+                self.fields['students'].queryset = UserProfile.objects.filter(role=UserRole.STUDENT, department=hod_department)
+            elif profile.role == 'FACULTY':
+                 # Faculty see courses they teach and students in those departments
+                taught_courses = profile.taught_courses.all()
+                department_ids = taught_courses.values_list('department_id', flat=True).distinct()
+                self.fields['course'].queryset = taught_courses
+                self.fields['students'].queryset = UserProfile.objects.filter(role=UserRole.STUDENT, department_id__in=department_ids)
