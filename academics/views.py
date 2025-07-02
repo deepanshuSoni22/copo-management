@@ -17,7 +17,7 @@ from .forms import (
     StudentMarkFormSet,
     AcademicDepartmentForm,
     SemesterForm, CoursePlanForm, CourseObjectiveFormSet, WeeklyLessonPlanFormSet, CIAComponentFormSet, StudentCreationForm, RubricForm, RubricCriterionFormSet, AssignmentForm, RubricScore,
-    SubmissionForm, GradingForm, RubricScoreForm, StudentUpdateByFacultyForm, EnrollStudentForm, BulkEnrollmentForm
+    SubmissionForm, GradingForm, RubricScoreForm, StudentUpdateByFacultyForm, EnrollStudentForm, BulkEnrollmentForm, CourseOutcomeFormSet
 )  # Form
 
 # Import models and forms
@@ -946,14 +946,19 @@ def course_update(request, pk):
 
     if request.method == 'POST':
         form = CourseForm(request.POST, instance=course)
-        if form.is_valid():
-            course = form.save()
-            messages.success(request, f'Course "{course.code} - {course.name}" updated successfully!')
-            return redirect('course_list')
+        formset = CourseOutcomeFormSet(request.POST, instance=course, prefix='outcomes')
+
+        if form.is_valid() and formset.is_valid():
+            with transaction.atomic(): # Use a transaction for data integrity
+                form.save()
+                formset.save()
+                messages.success(request, f'Course "{course.code} - {course.name}" updated successfully!')
+                return redirect('course_list')
         else:
             messages.error(request, 'Please correct the errors below.')
     else:
         form = CourseForm(instance=course)
+        formset = CourseOutcomeFormSet(instance=course, prefix='outcomes')
         # Prefilter course choices for faculty users (existing logic)
         if is_faculty(request.user) and not is_admin_or_hod(request.user):
             form.fields['course'].queryset = request.user.profile.taught_courses.all().order_by('code')
@@ -968,6 +973,7 @@ def course_update(request, pk):
 
     context = {
         'form': form,
+        'outcome_formset': formset, # <-- Add formset to context
         'form_title': 'Update Course',
     }
     return render(request, 'academics/course_form.html', context)

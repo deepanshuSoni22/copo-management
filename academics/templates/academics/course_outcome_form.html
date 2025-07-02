@@ -1,86 +1,113 @@
-{# academics/templates/academics/course_outcome_form.html #}
+{# academics/templates/academics/course_form.html #}
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}{{ form_title }}{% endblock %}
 
 {% block content %}
-    <div class="bg-white rounded-lg shadow-md p-6 max-w-2xl mx-auto">
-        <h1 class="text-3xl font-bold text-gray-800 mb-6">{{ form_title }}</h1>
-
-        <form method="post" class="space-y-6">
+    <div class="bg-white-pure rounded-lg shadow-md p-3 sm:p-4 lg:p-6 max-w-4xl mx-auto">
+        <h1 class="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-800 mb-6">{{ form_title }}</h1>
+        
+        <form method="post" class="space-y-8">
             {% csrf_token %}
 
-            {% if form.non_field_errors %}
-                <div class="bg-red-100 text-red-700 border border-red-200 p-3 rounded-md mb-4">
-                    {% for error in form.non_field_errors %}
-                        <p>{{ error }}</p>
+            <div class="border border-border-default rounded-lg p-4 sm:p-6 space-y-4">
+                <h2 class="text-lg sm:text-xl font-semibold text-gray-800 mb-4 border-b pb-2">Course Details</h2>
+                {{ form.as_p }}
+            </div>
+
+            <div class="border border-border-default rounded-lg p-4 sm:p-6 space-y-4">
+                <h2 class="text-lg sm:text-xl font-semibold text-gray-800 mb-4 border-b pb-2">Course Outcomes for this Course</h2>
+                
+                {{ outcome_formset.management_form }}
+                
+                <div id="outcome-form-container" class="space-y-4">
+                    {% for outcome_form in outcome_formset %}
+                        <div class="outcome-form bg-light-gray-bg p-4 rounded-md border">
+                            {{ outcome_form.id }}
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                <div class="md:col-span-1">{{ outcome_form.code.label_tag }} {{ outcome_form.code }}</div>
+                                <div class="md:col-span-3">{{ outcome_form.description.label_tag }} {{ outcome_form.description }}</div>
+                            </div>
+                            <div class="pt-4 mt-4 border-t">
+                                <label class="block text-sm font-medium text-gray-700">Bloom's Taxonomy Levels</label>
+                                <div class="mt-2 grid grid-cols-2 md:grid-cols-3 gap-4">
+                                    {% for rbt_field in outcome_form %}
+                                        {% if 'rbt_level' in rbt_field.name %}
+                                            <div class="flex items-center">
+                                                {{ rbt_field }}
+                                                <label for="{{ rbt_field.id_for_label }}" class="ml-2 text-sm text-gray-600">{{ rbt_field.label }}</label>
+                                            </div>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% if outcome_form.instance.pk %}
+                                <div class="mt-4 pt-3 border-t flex justify-end">
+                                    {{ outcome_form.DELETE.label_tag }} {{ outcome_form.DELETE }}
+                                </div>
+                            {% endif %}
+                        </div>
                     {% endfor %}
                 </div>
-            {% endif %}
 
-            <div>
-                <label for="{{ form.course.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">{{ form.course.label }}</label>
-                {{ form.course }}
-                {% if form.course.errors %}
-                    <p class="mt-2 text-sm text-red-600">{{ form.course.errors.as_text }}</p>
-                {% endif %}
-            </div>
-
-            <div>
-                <label for="{{ form.code.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">{{ form.code.label }}</label>
-                {{ form.code }}
-                {% if form.code.errors %}
-                    <p class="mt-2 text-sm text-red-600">{{ form.code.errors.as_text }}</p>
-                {% endif %}
-            </div>
-
-            <div>
-                <label for="{{ form.description.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">{{ form.description.label }}</label>
-                {{ form.description }}
-                {% if form.description.errors %}
-                    <p class="mt-2 text-sm text-red-600">{{ form.description.errors.as_text }}</p>
-                {% endif %}
-            </div>
-
-            <div class="pt-6 mt-6 border-t border-gray-200">
-                <label class="block text-sm font-medium text-gray-700">Bloom's Taxonomy Levels</label>
-                <div class="mt-4 space-y-3">
-                    <div class="flex items-center">
-                        {{ form.rbt_level_1 }}
-                        <label for="{{ form.rbt_level_1.id_for_label }}" class="ml-3 text-sm text-gray-600">{{ form.rbt_level_1.label }}</label>
-                    </div>
-                    <div class="flex items-center">
-                        {{ form.rbt_level_2 }}
-                        <label for="{{ form.rbt_level_2.id_for_label }}" class="ml-3 text-sm text-gray-600">{{ form.rbt_level_2.label }}</label>
-                    </div>
-                    <div class="flex items-center">
-                        {{ form.rbt_level_3 }}
-                        <label for="{{ form.rbt_level_3.id_for_label }}" class="ml-3 text-sm text-gray-600">{{ form.rbt_level_3.label }}</label>
-                    </div>
-                    <div class="flex items-center">
-                        {{ form.rbt_level_4 }}
-                        <label for="{{ form.rbt_level_4.id_for_label }}" class="ml-3 text-sm text-gray-600">{{ form.rbt_level_4.label }}</label>
-                    </div>
-                    <div class="flex items-center">
-                        {{ form.rbt_level_5 }}
-                        <label for="{{ form.rbt_level_5.id_for_label }}" class="ml-3 text-sm text-gray-600">{{ form.rbt_level_5.label }}</label>
-                    </div>
-                    <div class="flex items-center">
-                        {{ form.rbt_level_6 }}
-                        <label for="{{ form.rbt_level_6.id_for_label }}" class="ml-3 text-sm text-gray-600">{{ form.rbt_level_6.label }}</label>
+                <div id="empty-outcome-form" style="display: none;">
+                    <div class="outcome-form bg-light-gray-bg p-4 rounded-md border">
+                         {{ outcome_formset.empty_form.id }}
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div class="md:col-span-1">{{ outcome_formset.empty_form.code.label_tag }} {{ outcome_formset.empty_form.code }}</div>
+                            <div class="md:col-span-3">{{ outcome_formset.empty_form.description.label_tag }} {{ outcome_formset.empty_form.description }}</div>
+                        </div>
+                        <div class="pt-4 mt-4 border-t">
+                            <label class="block text-sm font-medium text-gray-700">Bloom's Taxonomy Levels</label>
+                            <div class="mt-2 grid grid-cols-2 md:grid-cols-3 gap-4">
+                                {% for rbt_field in outcome_formset.empty_form %}
+                                    {% if 'rbt_level' in rbt_field.name %}
+                                        <div class="flex items-center">
+                                            {{ rbt_field }}
+                                            <label for="{{ rbt_field.id_for_label }}" class="ml-2 text-sm text-gray-600">{{ rbt_field.label }}</label>
+                                        </div>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
-            <div class="flex items-center space-x-4">
-                <button type="submit"
-                        class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out">
-                    Save Course Outcome
+
+                <button type="button" id="add-outcome-button" class="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white-pure bg-brand-purple hover:bg-brand-yellow hover:text-gray-900">
+                    Add Another Course Outcome
                 </button>
-                <a href="{% url 'course_outcome_list' %}"
-                   class="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out">
+            </div>
+            <div class="flex items-center space-x-4 mt-6 pt-4 border-t">
+                <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white-pure bg-brand-purple hover:bg-brand-yellow hover:text-gray-900">
+                    Save Course
+                </button>
+                <a href="{% url 'course_list' %}" class="inline-flex justify-center py-2 px-4 border border-border-default rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white-pure hover:bg-light-gray-bg">
                     Cancel
                 </a>
             </div>
         </form>
     </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const addButton = document.getElementById('add-outcome-button');
+    const container = document.getElementById('outcome-form-container');
+    const totalFormsInput = document.getElementById('id_outcomes-TOTAL_FORMS');
+    const emptyFormTemplate = document.getElementById('empty-outcome-form').innerHTML;
+
+    addButton.addEventListener('click', function() {
+        const formIndex = parseInt(totalFormsInput.value);
+        const newFormHtml = emptyFormTemplate.replace(/__prefix__/g, formIndex);
+        
+        const newFormDiv = document.createElement('div');
+        newFormDiv.innerHTML = newFormHtml;
+        container.appendChild(newFormDiv);
+        
+        totalFormsInput.value = formIndex + 1;
+    });
+});
+</script>
 {% endblock %}

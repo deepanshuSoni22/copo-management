@@ -463,6 +463,16 @@ class CourseOutcomeForm(forms.ModelForm):
             ):
                 self.add_error("code", "This code is already used for this course.")
         return cleaned_data
+    
+CourseOutcomeFormSet = inlineformset_factory(
+    Course,                  # Parent model
+    CourseOutcome,           # Child model
+    form=CourseOutcomeForm,  # The form to use for each entry
+    extra=0,                 # Show one empty form by default
+    can_delete=True,         # Allow deleting outcomes
+    # The fields from CourseOutcomeForm you want to show in the formset
+    fields=["code", "description", "rbt_level_1", "rbt_level_2", "rbt_level_3", "rbt_level_4", "rbt_level_5", "rbt_level_6"]
+)
 
 
 # Form for a single CO-PO mapping entry (used within a formset)
