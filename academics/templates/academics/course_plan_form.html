@@ -144,28 +144,28 @@
                             {% endif %}
                         </div>
                     {% endfor %}
-                    <div id="empty-objective-form" style="display: none;">
-                        <div class="relative bg-light-gray-bg p-3 rounded-md border border-border-default">
-                            <h3 class="text-sm font-semibold text-gray-900 mb-2">Objective #__prefix__</h3>
-                            {% for hidden in course_objective_formset.empty_form.hidden_fields %}{{ hidden }}{% endfor %}
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div>
-                                    <label for="id_objectives-__prefix__-order" class="block text-sm font-medium text-gray-default mb-1">Order</label>
-                                    {{ course_objective_formset.empty_form.order }}
-                                </div>
-                                <div>
-                                    <label for="id_objectives-__prefix__-unit_number" class="block text-sm font-medium text-gray-default mb-1">Unit number</label>
-                                    {{ course_objective_formset.empty_form.unit_number }}
-                                </div>
+                </div>
+                <div id="empty-objective-form" style="display: none;">
+                    <div class="relative bg-light-gray-bg p-3 rounded-md border border-border-default">
+                        <h3 class="text-sm font-semibold text-gray-900 mb-2">Objective #__prefix__</h3>
+                        {% for hidden in course_objective_formset.empty_form.hidden_fields %}{{ hidden }}{% endfor %}
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label for="id_objectives-__prefix__-order" class="block text-sm font-medium text-gray-default mb-1">Order</label>
+                                {{ course_objective_formset.empty_form.order }}
                             </div>
-                            <div class="mt-4">
-                                <label for="id_objectives-__prefix__-objective_text" class="block text-sm font-medium text-gray-default mb-1">Objective text</label>
-                                {{ course_objective_formset.empty_form.objective_text }}
+                            <div>
+                                <label for="id_objectives-__prefix__-unit_number" class="block text-sm font-medium text-gray-default mb-1">Unit number</label>
+                                {{ course_objective_formset.empty_form.unit_number }}
                             </div>
                         </div>
-                    </div>                    
-                </div>
-                {% if can_edit_full_plan %}
+                        <div class="mt-4">
+                            <label for="id_objectives-__prefix__-objective_text" class="block text-sm font-medium text-gray-default mb-1">Objective text</label>
+                            {{ course_objective_formset.empty_form.objective_text }}
+                        </div>
+                    </div>
+                </div>                    
+                {% if can_edit_weekly_lessons %}
                     <button type="button" id="add-objective-form" class="mt-4 inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white-pure bg-brand-purple hover:bg-brand-yellow hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-purple transition duration-150 ease-in-out">
                         Add Another Objective
                     </button>
@@ -235,45 +235,45 @@
                             {% endif %}
                         </div>
                     {% endfor %}
-                    <div id="empty-lesson-form" style="display: none;">
-                        <div class="relative bg-light-gray-bg p-3 rounded-md border border-border-default">
-                            <h3 class="text-sm font-semibold text-gray-900 mb-2">Lesson for Unit #__prefix__</h3>
-                            {% for hidden in weekly_lesson_formset.empty_form.hidden_fields %}{{ hidden }}{% endfor %}
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div>
-                                    <label for="id_lessons-__prefix__-order" class="block text-sm font-medium text-gray-default mb-1">Order</label>
-                                    {{ weekly_lesson_formset.empty_form.order }}
-                                </div>
-                                <div>
-                                    <label for="id_lessons-__prefix__-unit_number" class="block text-sm font-medium text-gray-default mb-1">Unit number</label>
-                                    {{ weekly_lesson_formset.empty_form.unit_number }}
-                                </div>
+                </div>
+                <div id="empty-lesson-form" style="display: none;">
+                    <div class="relative bg-light-gray-bg p-3 rounded-md border border-border-default">
+                        <h3 class="text-sm font-semibold text-gray-900 mb-2">Lesson for Unit #__prefix__</h3>
+                        {% for hidden in weekly_lesson_formset.empty_form.hidden_fields %}{{ hidden }}{% endfor %}
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label for="id_lessons-__prefix__-order" class="block text-sm font-medium text-gray-default mb-1">Order</label>
+                                {{ weekly_lesson_formset.empty_form.order }}
                             </div>
-                            <div class="mt-4">
-                                <label for="id_lessons-__prefix__-unit_details" class="block text-sm font-medium text-gray-default mb-1">Unit details</label>
-                                {{ weekly_lesson_formset.empty_form.unit_details }}
-                            </div>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-                                <div>
-                                    <label for="id_lessons-__prefix__-start_date" class="block text-sm font-medium text-gray-default mb-1">Start date</label>
-                                    {{ weekly_lesson_formset.empty_form.start_date }}
-                                </div>
-                                <div>
-                                    <label for="id_lessons-__prefix__-end_date" class="block text-sm font-medium text-gray-default mb-1">End date</label>
-                                    {{ weekly_lesson_formset.empty_form.end_date }}
-                                </div>
-                            </div>
-                            <div class="mt-4">
-                                <label for="id_lessons-__prefix__-pedagogy" class="block text-sm font-medium text-gray-default mb-1">Pedagogy</label>
-                                {{ weekly_lesson_formset.empty_form.pedagogy }}
-                            </div>
-                            <div class="mt-4">
-                                <label for="id_lessons-__prefix__-references" class="block text-sm font-medium text-gray-default mb-1">References</label>
-                                {{ weekly_lesson_formset.empty_form.references }}
+                            <div>
+                                <label for="id_lessons-__prefix__-unit_number" class="block text-sm font-medium text-gray-default mb-1">Unit number</label>
+                                {{ weekly_lesson_formset.empty_form.unit_number }}
                             </div>
                         </div>
-                    </div>                    
-                </div>
+                        <div class="mt-4">
+                            <label for="id_lessons-__prefix__-unit_details" class="block text-sm font-medium text-gray-default mb-1">Unit details</label>
+                            {{ weekly_lesson_formset.empty_form.unit_details }}
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                            <div>
+                                <label for="id_lessons-__prefix__-start_date" class="block text-sm font-medium text-gray-default mb-1">Start date</label>
+                                {{ weekly_lesson_formset.empty_form.start_date }}
+                            </div>
+                            <div>
+                                <label for="id_lessons-__prefix__-end_date" class="block text-sm font-medium text-gray-default mb-1">End date</label>
+                                {{ weekly_lesson_formset.empty_form.end_date }}
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <label for="id_lessons-__prefix__-pedagogy" class="block text-sm font-medium text-gray-default mb-1">Pedagogy</label>
+                            {{ weekly_lesson_formset.empty_form.pedagogy }}
+                        </div>
+                        <div class="mt-4">
+                            <label for="id_lessons-__prefix__-references" class="block text-sm font-medium text-gray-default mb-1">References</label>
+                            {{ weekly_lesson_formset.empty_form.references }}
+                        </div>
+                    </div>
+                </div>                    
                 <button type="button" id="add-lesson-form" 
                 class="mt-4 inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white-pure bg-brand-purple hover:bg-brand-yellow hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-purple transition duration-150 ease-in-out">
                     Add Another Lesson Plan Entry
@@ -380,7 +380,7 @@
                     </div>
                 </div>
 
-                {% if can_edit_full_plan %}
+                {% if can_edit_weekly_lessons %}
                     <button type="button" id="add-cia-form" class="mt-4 inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white-pure bg-brand-purple hover:bg-brand-yellow hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-purple transition duration-150 ease-in-out">
                         Add Another CIA Component
                     </button>
@@ -414,13 +414,31 @@
             const totalFormsInput = document.getElementById(totalFormsId);
             const emptyForm = document.getElementById(emptyFormId);
 
-            const currentTotalForms = parseInt(totalFormsInput.value);
+            const formIndex = parseInt(totalFormsInput.value);
             const newForm = emptyForm.cloneNode(true);
             
-            newForm.innerHTML = newForm.innerHTML.replace(/__prefix__/g, currentTotalForms);
+            newForm.innerHTML = newForm.innerHTML.replace(/__prefix__/g, formIndex);
             newForm.style.display = 'block';
             newForm.removeAttribute('id');
             
+            // --- START: NEW AND CORRECTED LOGIC FOR NUMBERING ---
+            // Find the header tag within the newly created form
+            const header = newForm.querySelector('h3');
+            if (header) {
+                // The display number is the current number of forms + 1
+                const displayIndex = container.children.length + 1;
+                // Replace the placeholder text with the correct 1-based number
+                const headerText = header.textContent;
+                if (headerText.includes('Objective')) {
+                    header.textContent = `Objective #${displayIndex}`;
+                } else if (headerText.includes('Lesson')) {
+                    header.textContent = `Lesson for Unit #${displayIndex}`;
+                } else if (headerText.includes('CIA Component')) {
+                    header.textContent = `CIA Component #${displayIndex}`;
+                }
+            }
+            // --- END: NEW AND CORRECTED LOGIC ---
+
             // Mark as having unsaved changes
             hasUnsavedChanges = true;
             
@@ -432,37 +450,43 @@
             deleteButton.onclick = function() {
                 newForm.remove();
                 updateFormNumbers(containerId);
-                // Decrease total forms count
-                totalFormsInput.value = parseInt(totalFormsInput.value) - 1;
-                checkForUnsavedChanges();
             };
             
             const formContainer = newForm.querySelector('.relative.bg-light-gray-bg').parentNode;
             formContainer.appendChild(deleteButton);
             container.appendChild(newForm);
 
-            totalFormsInput.value = currentTotalForms + 1;
+            totalFormsInput.value = formIndex + 1;
             
             // Add event listeners to new form inputs to track changes
             addChangeListeners(newForm);
         }
         
-        // Function to update form numbers in headers after deletion
+        // Function to update form numbers in headers after a DELETION
         function updateFormNumbers(containerId) {
             const container = document.getElementById(containerId);
+            // --- THIS IS THE KEY CHANGE ---
+            // We use .children to get only the direct child divs of the container,
+            // which is more reliable than a class-based query.
             const forms = container.querySelectorAll('.relative.bg-light-gray-bg');
-            forms.forEach((form, index) => {
-                const header = form.querySelector('h3');
-                if (header) {
-                    const text = header.textContent;
-                    if (text.includes('Objective')) {
-                        header.textContent = `Objective #${index + 1}`;
-                    } else if (text.includes('Lesson')) {
-                        header.textContent = `Lesson for Unit #${index + 1}`;
-                    } else if (text.includes('CIA Component')) {
-                        header.textContent = `CIA Component #${index + 1}`;
-                    }
+            
+            let visibleIndex = 0;
+            forms.forEach((form) => {
+                // Skip hidden forms (e.g., template forms or display: none)
+                    if (!form.offsetParent) return;
+
+            const header = form.querySelector('h3');
+            if (header) {
+                if (header.textContent.includes('Objective')) {
+                    header.textContent = `Objective #${visibleIndex + 1}`;
+                } else if (header.textContent.includes('Lesson')) {
+                    header.textContent = `Lesson for Unit #${visibleIndex + 1}`;
+                } else if (header.textContent.includes('CIA Component')) {
+                    header.textContent = `CIA Component #${visibleIndex + 1}`;
                 }
+            }
+
+            visibleIndex++;
             });
         }
         
