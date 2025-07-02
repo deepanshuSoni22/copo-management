@@ -331,46 +331,42 @@ class CourseForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         self.request = kwargs.pop('request', None) # Pop request out of kwargs
         super().__init__(*args, **kwargs)
+
         self.fields['name'].label = "Course Name"
         self.fields['code'].label = "Course Code"
         self.fields['credits'].label = "Course Credits"
         
-        # HOD restriction logic
-        if self.request and self.request.user.profile.role == 'HOD':
-            try:
-                hod_academic_department = AcademicDepartment.objects.get(hod=self.request.user.profile)
-                # Filter queryset for 'department' field to only HOD's department
-                self.fields['department'].queryset = Department.objects.filter(pk=hod_academic_department.department.pk)
-                # Set initial value and disable the field
-                self.fields['department'].initial = hod_academic_department.department
-                self.fields['department'].disabled = True
-                self.fields['department'].widget.attrs['class'] += ' bg-gray-100 cursor-not-allowed'
-                self.fields['department'].help_text = "Your department is pre-selected based on your HOD assignment and cannot be changed."
+        if self.request and hasattr(self.request.user, 'profile'):
+            profile = self.request.user.profile
+            
+            # This is your existing HOD restriction logic, which is correct
+            if profile.role == 'HOD':
+                try:
+                    hod_academic_department = AcademicDepartment.objects.get(hod=profile)
+                    self.fields['department'].queryset = Department.objects.filter(pk=hod_academic_department.department.pk)
+                    self.fields['department'].initial = hod_academic_department.department
+                    self.fields['department'].disabled = True
+                    self.fields['department'].widget.attrs['class'] += ' bg-gray-100 cursor-not-allowed'
+                    self.fields['semester'].queryset = Semester.objects.filter(academic_department=hod_academic_department)
+                except AcademicDepartment.DoesNotExist:
+                    for field in self.fields: self.fields[field].disabled = True
+            
+            # --- START OF NEW LOGIC FOR FACULTY ---
+            elif profile.role == 'FACULTY':
+                # If the user is a regular faculty, disable all fields in this form
+                for field_name in self.fields:
+                    self.fields[field_name].disabled = True
+                    self.fields[field_name].widget.attrs['class'] += ' bg-gray-100 cursor-not-allowed'
                 
-                # Further filter semester queryset to only those belonging to HOD's department
-                self.fields['semester'].queryset = Semester.objects.filter(academic_department=hod_academic_department).select_related('academic_department__department', 'academic_department__academic_year').order_by('-academic_department__academic_year__start_date', 'order')
-
-            except AcademicDepartment.DoesNotExist:
-                self.fields['department'].disabled = True
-                self.fields['department'].queryset = Department.objects.none()
-                self.fields['department'].help_text = "Your HOD profile is not assigned to an Academic Department. No department choices available."
-                self.fields['semester'].disabled = True
-                self.fields['semester'].queryset = Semester.objects.none()
-                self.fields['semester'].help_text = ""
-            except AcademicDepartment.MultipleObjectsReturned:
-                self.fields['department'].disabled = True
-                self.fields['department'].queryset = Department.objects.none()
-                self.fields['department'].help_text = "Data inconsistency: HOD assigned to multiple Academic Departments."
-                self.fields['semester'].disabled = True
-                self.fields['semester'].queryset = Semester.objects.none()
-                self.fields['semester'].help_text = ""
+                # Add a helpful message to one of the fields
+                self.fields['name'].help_text = "Course details can only be edited by an Admin or HOD."
+            # --- END OF NEW LOGIC ---
 
         self.fields["faculty"].label_from_instance = lambda obj: (
             f"{obj.user.first_name} {obj.user.last_name} ({obj.user.username})"
-            if obj.user.first_name
-            else obj.user.username
+            if obj.user.first_name else obj.user.username
         )
-
+        
     def clean(self):
         cleaned_data = super().clean()
         

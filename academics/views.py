@@ -825,46 +825,48 @@ def program_outcome_delete(request, pk):
 @login_required
 @user_passes_test(is_admin_or_hod_or_faculty, login_url='/accounts/login/')
 def course_list(request):
-    # Start with the base querysets for all data
-    courses_qs = Course.objects.all().select_related('department', 'semester__academic_department__academic_year').prefetch_related('faculty__user')
-    semesters_qs = Semester.objects.all().select_related('academic_department__department', 'academic_department__academic_year')
-    departments_qs = Department.objects.all()
-
     user_profile = request.user.profile
 
-    # --- NEW: Scope all querysets for the HOD role ---
-    if user_profile.role == 'HOD':
+    # --- START: CORRECTED PERMISSION LOGIC ---
+    # Determine the base queryset for courses and filters based on user role
+    if is_admin(user_profile.user):
+        # Admins see all courses and can filter by any department/semester
+        courses_qs = Course.objects.all()
+        semesters_qs = Semester.objects.all()
+        departments_qs = Department.objects.all()
+    elif is_hod(user_profile.user):
+        # HODs see courses in their department and can filter by semesters in their department
         try:
-            # Get the HOD's specific academic department instance
-            hod_academic_dept = AcademicDepartment.objects.select_related('department').get(hod=user_profile)
+            hod_academic_dept = AcademicDepartment.objects.get(hod=user_profile)
+            department = hod_academic_dept.department
             
-            # Filter the main course list to the HOD's department
-            courses_qs = courses_qs.filter(semester__academic_department=hod_academic_dept)
-            
-            # CRITICAL FIX: Filter the dropdown querysets as well
-            semesters_qs = semesters_qs.filter(academic_department=hod_academic_dept)
-            departments_qs = departments_qs.filter(pk=hod_academic_dept.department.pk)
-            
+            courses_qs = Course.objects.filter(department=department)
+            semesters_qs = Semester.objects.filter(academic_department=hod_academic_dept)
+            departments_qs = Department.objects.filter(pk=department.pk)
         except AcademicDepartment.DoesNotExist:
-            messages.warning(request, "Your HOD profile is not assigned to an Academic Department. No courses displayed.")
-            # If HOD is not assigned, they see nothing
-            courses_qs = Course.objects.none()
-            semesters_qs = Semester.objects.none()
-            departments_qs = Department.objects.none()
+            messages.warning(request, "Your HOD profile is not assigned to an Academic Department.")
+            courses_qs = semesters_qs = departments_qs = Course.objects.none() # Show nothing
+    else: # is_faculty
+        # Faculty ONLY see courses they are assigned to
+        courses_qs = user_profile.taught_courses.all()
+        # The filters should only show relevant departments and semesters
+        taught_course_semesters = courses_qs.values_list('semester', flat=True).distinct()
+        taught_course_depts = courses_qs.values_list('department', flat=True).distinct()
+        semesters_qs = Semester.objects.filter(pk__in=taught_course_semesters)
+        departments_qs = Department.objects.filter(pk__in=taught_course_depts)
+    # --- END: CORRECTED PERMISSION LOGIC ---
 
-    # Apply filters from GET parameters based on user selections
+    # Apply filters from GET parameters
     selected_semester_id = request.GET.get('semester')
     selected_department_id = request.GET.get('department')
 
-    # Note: Only Admins can effectively use the department filter, as it's restricted for HODs
-    if selected_department_id and (user_profile.role == 'ADMIN' or request.user.is_superuser):
+    if selected_department_id:
         courses_qs = courses_qs.filter(department__id=selected_department_id)
-
     if selected_semester_id:
         courses_qs = courses_qs.filter(semester__id=selected_semester_id)
 
     context = {
-        'courses': courses_qs.order_by('semester__academic_department__academic_year__start_date', 'semester__order', 'code'),
+        'courses': courses_qs.select_related('department', 'semester__academic_department__academic_year').prefetch_related('faculty__user').order_by('code'),
         'form_title': 'Courses',
         'semesters': semesters_qs.order_by('-academic_department__academic_year__start_date', 'order'),
         'departments': departments_qs.order_by('name'),
@@ -931,16 +933,21 @@ def course_create(request):
 @user_passes_test(is_admin_or_hod, login_url='/accounts/login/')
 def course_update(request, pk):
     course = get_object_or_404(Course, pk=pk)
+    user_profile = request.user.profile
 
-    # Permission check (existing code)
-    if is_faculty(request.user) and not is_admin_or_hod(request.user):
-        # This check uses course.semester.academic_department.hod implicitly via taught_courses
-        if course not in request.user.profile.taught_courses.all():
-            messages.error(request, 'You do not have permission to update this Course.')
-            return redirect('course_list')
+
+     # --- START: NEW PERMISSION LOGIC ---
+    # Check if the user has permission to be on this page at all.
+    is_admin_or_hod_user = is_admin(user_profile.user) or is_hod(user_profile.user)
+    is_assigned_faculty = user_profile in course.faculty.all()
+  
+    if not (is_admin_or_hod_user or is_assigned_faculty):
+        messages.error(request, 'You do not have permission to view this course.')
+        return redirect('course_list')
+    # --- END: NEW PERMISSION LOGIC ---
 
     if request.method == 'POST':
-        form = CourseForm(request.POST, instance=course)
+        form = CourseForm(request.POST, instance=course, request=request)
         formset = CourseOutcomeFormSet(request.POST, instance=course, prefix='outcomes')
 
         if form.is_valid() and formset.is_valid():

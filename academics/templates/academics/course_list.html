@@ -91,47 +91,25 @@
             <tr class="hover:bg-light-gray-bg transition duration-150 ease-in-out">
                 <td class="px-4 lg:px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ course.code }}</td>
                 <td class="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-default">{{ course.name }}</td>
+                <td class="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-default">{{ course.department.name|default:'N/A' }}</td>
+                <td class="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-default">{% if course.semester %}{{ course.semester.name }}{% else %}N/A{% endif %}</td>
+                <td class="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-default">{% if course.semester and course.semester.academic_department %}{{ course.semester.academic_department.academic_year.start_date.year }}-{{ course.semester.academic_department.academic_year.end_date.year }}{% else %}N/A{% endif %}</td>
                 <td class="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-default">
-                    {{ course.department.name|default:'N/A' }}
-                </td>
-                <td class="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-default">
-                    {% if course.semester %}{{ course.semester.name }}{% else %}N/A{% endif %}
-                </td>
-                <td class="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-default">
-                    {% if course.semester and course.semester.academic_department %}{{ course.semester.academic_department.academic_year.start_date.year }}-{{ course.semester.academic_department.academic_year.end_date.year }}{% else %}N/A{% endif %}
-                </td>
-                <td class="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-default">
-                    {% if course.faculty.all %}
-                        {% for faculty_profile in course.faculty.all %}
-                            <span class="block">{{ faculty_profile.user.first_name }} {{ faculty_profile.user.last_name|default:faculty_profile.user.username }}</span>
-                        {% endfor %}
-                    {% else %}
-                        <span class="text-gray-default italic">None</span>
-                    {% endif %}
+                    {% for faculty_profile in course.faculty.all %}<span class="block">{{ faculty_profile.user.first_name }} {{ faculty_profile.user.last_name|default:faculty_profile.user.username }}</span>{% empty %}<span class="text-gray-default italic">None</span>{% endfor %}
                 </td>
                 <td class="px-4 lg:px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    {# Create/View Course Plan button #}
-                    {% if user.is_superuser or user.profile.role == 'ADMIN' or user.profile.role == 'HOD' %} {# Only HOD/Admin can manage plans #}
-                        {% if not course.course_plan %} {# Only show if no plan exists for this course #}
-                            <a href="{% url 'course_plan_create' %}?course_id={{ course.pk }}" 
-                               class="text-green-600 hover:text-green-900 mr-3 lg:mr-4 transition duration-150 ease-in-out whitespace-nowrap">
-                                Create Plan
-                            </a>
+                    {% if request.user.is_superuser or request.user.profile.role == 'ADMIN' or request.user.profile.role == 'HOD' %}
+                        {% if not course.course_plan %}
+                            <a href="{% url 'course_plan_create' %}?course_id={{ course.pk }}" class="text-green-600 hover:text-green-900 mr-3 lg:mr-4">Create Plan</a>
                         {% else %}
-                            <a href="{% url 'course_plan_update' course.pk %}" 
-                               class="text-blue-600 hover:text-blue-900 mr-3 lg:mr-4 transition duration-150 ease-in-out whitespace-nowrap">
-                                View/Edit Plan
-                            </a>
+                            <a href="{% url 'course_plan_update' course.pk %}" class="text-blue-600 hover:text-blue-900 mr-3 lg:mr-4">View/Edit Plan</a>
                         {% endif %}
+                        <a href="{% url 'course_update' course.pk %}" class="text-brand-purple hover:text-brand-yellow mr-3 lg:mr-4">Edit</a>
+                        <a href="{% url 'course_delete' course.pk %}" class="text-red-600 hover:text-red-900">Delete</a>
+                    {% elif request.user.profile in course.faculty.all %}
+                        <a href="{% url 'course_update' course.pk %}" class="text-brand-purple hover:text-brand-yellow">Edit</a>
                     {% endif %}
-                    {% if user.is_superuser or user.profile.role == 'ADMIN' or user.profile.role == 'HOD' %}
-                        <a href="{% url 'course_update' course.pk %}" class="text-brand-purple hover:text-brand-yellow mr-3 lg:mr-4 transition duration-150 ease-in-out">Edit</a>
-                        <a href="{% url 'course_delete' course.pk %}" class="text-red-600 hover:text-red-900 transition duration-150 ease-in-out"
-                        onclick="return confirm('Are you sure you want to delete Course {{ course.code }} - {{ course.name }}?');">
-                        Delete
-                        </a>
-                    {% endif %}
-                </td>
+                    </td>
             </tr>
             {% endfor %}
         </tbody>
@@ -172,8 +150,6 @@
                         View/Edit Plan
                     </a>
                 {% endif %}
-            {% endif %}
-            {% if user.is_superuser or user.profile.role == 'ADMIN' or user.profile.role == 'HOD' %}
                 <a href="{% url 'course_update' course.pk %}" 
                 class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-brand-purple hover:text-brand-yellow hover:bg-brand-purple hover:bg-opacity-10 rounded-md transition duration-150 ease-in-out">
                     Edit
@@ -183,6 +159,8 @@
                 onclick="return confirm('Are you sure you want to delete Course {{ course.code }} - {{ course.name }}?');">
                     Delete
                 </a>
+            {% elif request.user.profile in course.faculty.all %}
+                <a href="{% url 'course_update' course.pk %}" class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-brand-purple hover:text-brand-yellow hover:bg-brand-purple hover:bg-opacity-10 rounded-md">Edit</a>
             {% endif %}
         </div>
     </div>
