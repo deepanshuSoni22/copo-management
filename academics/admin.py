@@ -347,7 +347,7 @@ class ProgramOutcomeAttainmentAdmin(admin.ModelAdmin):
 # --- ADD THIS NEW ADMIN REGISTRATION ---
 @admin.register(WeeklyLessonPlan)
 class WeeklyLessonPlanAdmin(admin.ModelAdmin):
-    list_display = ('course_plan', 'unit_number', 'week_dates', 'order')
+    list_display = ('course_plan', 'unit_number', 'start_date', 'end_date', 'order')
     list_filter = ('course_plan__course__department',)
     search_fields = ('unit_details', 'course_plan__course__code')
     ordering = ('course_plan', 'order')

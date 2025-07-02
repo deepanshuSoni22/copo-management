@@ -414,8 +414,18 @@ class CoursePlan(models.Model):
         related_name='course_plan' # Access CoursePlan from Course via course_instance.course_plan
     )
     title = models.CharField(max_length=255, help_text="e.g., Course Plan for AI (V SEM A & B)")
-    description = models.TextField(blank=True, null=True, help_text="General overview/introduction for the course plan.")
     
+    # ADD these two new fields based on the PDF
+    classes_per_week = models.PositiveIntegerField(
+        default=4,
+        help_text="Number of classes scheduled per week for this course."
+    )
+
+    total_hours_allotted = models.PositiveIntegerField(
+        default=60,
+        help_text="Total hours allotted for the entire course."
+    )
+
     # Coordinator and Instructors (from PDF)
     course_coordinator = models.ForeignKey(
         'users.UserProfile',
@@ -495,7 +505,8 @@ class WeeklyLessonPlan(models.Model):
     )
     unit_number = models.CharField(max_length=10, help_text="e.g., I, II, Unit 1")
     unit_details = models.TextField(help_text="Topics covered in this unit/week.")
-    week_dates = models.CharField(max_length=100, blank=True, null=True, help_text="e.g., JULY 17TH - AUG 10TH")
+    start_date = models.DateField(blank=True, null=True, help_text="Start date for the weekly plan")
+    end_date = models.DateField(blank=True, null=True, help_text="End date for the weekly plan")
     pedagogy = models.TextField(blank=True, null=True, help_text="Methods used for teaching (e.g., Lecture, Demo, Activity-Based Learning).")
     references = models.TextField(blank=True, null=True, help_text="Textbooks, web links for this unit.")
     order = models.PositiveIntegerField(default=0, help_text="Order of the weekly plan entry.")

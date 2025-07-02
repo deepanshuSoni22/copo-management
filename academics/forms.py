@@ -671,11 +671,12 @@ class CoursePlanForm(forms.ModelForm):
     class Meta:
         model = CoursePlan
         # Note: 'course' field is automatically handled by ModelForm due to primary_key=True on the model
-        fields = ['title', 'description', 'course_coordinator', 'instructors', 'assessment_ratio']
+        fields = ['title', 'classes_per_week', 'total_hours_allotted', 'course_coordinator', 'instructors', 'assessment_ratio']
         widgets = {
             'title': forms.TextInput(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base'}),
-            'description': forms.Textarea(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base', 'rows': 4}),
             'assessment_ratio': forms.TextInput(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base', 'placeholder': 'e.g., 60:40'}),
+            'classes_per_week': forms.NumberInput(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base'}),
+            'total_hours_allotted': forms.NumberInput(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base'}),
         }
 
     # --- UPDATED __init__ METHOD ---
@@ -730,12 +731,15 @@ CourseObjectiveFormSet = inlineformset_factory(
 class WeeklyLessonPlanForm(forms.ModelForm):
     class Meta:
         model = WeeklyLessonPlan
-        fields = ['order', 'unit_number', 'unit_details', 'week_dates', 'pedagogy', 'references']
+        fields = ['order', 'unit_number', 'unit_details', 'start_date', 'end_date', 'pedagogy', 'references']
         widgets = {
             'order': forms.NumberInput(attrs={'class': 'mt-1 block w-16 px-2 py-1 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm'}),
             'unit_number': forms.TextInput(attrs={'class': 'mt-1 block w-24 px-2 py-1 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm'}),
             'unit_details': forms.Textarea(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base', 'rows': 4}),
-            'week_dates': forms.TextInput(attrs={'class': 'mt-1 block w-full px-2 py-1 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base', 'placeholder': 'e.g., JULY 17TH - AUG 10TH'}),
+
+            'start_date': forms.DateInput(attrs={'type': 'date', 'class': 'mt-1 block w-full px-2 py-1 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base'}),
+            'end_date': forms.DateInput(attrs={'type': 'date', 'class': 'mt-1 block w-full px-2 py-1 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base'}),
+
             'pedagogy': forms.Textarea(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base', 'rows': 4}),
             'references': forms.Textarea(attrs={'class': 'mt-1 block w-full px-4 py- border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base', 'rows': 4}),
         }
@@ -747,7 +751,7 @@ WeeklyLessonPlanFormSet = inlineformset_factory(
     form=WeeklyLessonPlanForm,
     extra=0,           # One empty form by default
     can_delete=True,   # Allow deleting entries
-    fields=['order', 'unit_number', 'unit_details', 'week_dates', 'pedagogy', 'references']
+    fields=['order', 'unit_number', 'unit_details', 'start_date', 'end_date', 'pedagogy', 'references']
 )
 
 

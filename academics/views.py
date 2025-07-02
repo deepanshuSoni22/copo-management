@@ -642,7 +642,12 @@ def course_plan_update(request, pk):
     is_hod_or_admin = user_profile.role in ['HOD', 'ADMIN'] or request.user.is_superuser
     is_course_instructor = user_profile == course_plan.course_coordinator or user_profile in course_plan.instructors.all()
 
-    if not (is_hod_or_admin or is_course_instructor):
+    # --- START OF NEW LOGIC ---
+    # This new flag determines who can edit the core components of the plan.
+    can_edit_main_components = is_hod_or_admin or is_course_instructor
+    # --- END OF NEW LOGIC ---
+
+    if not can_edit_main_components: # Simplified permission check
         messages.error(request, "You do not have permission to update this Course Plan.")
         return redirect('course_plan_list')
 
@@ -658,8 +663,8 @@ def course_plan_update(request, pk):
             
     course_outcomes_for_this_course = CourseOutcome.objects.filter(course=course_plan.course)
     # Define the form kwargs dictionary based on permission
-    objective_and_cia_kwargs = {'can_edit': is_hod_or_admin}
-    cia_kwargs = {'cos_queryset': course_outcomes_for_this_course, 'can_edit': is_hod_or_admin}
+    objective_and_cia_kwargs = {'can_edit': can_edit_main_components}
+    cia_kwargs = {'cos_queryset': course_outcomes_for_this_course, 'can_edit': can_edit_main_components}
 
     if request.method == 'POST':
         form = CoursePlanForm(request.POST, instance=course_plan, can_edit_full_plan=is_hod_or_admin)
@@ -668,18 +673,26 @@ def course_plan_update(request, pk):
         lesson_formset = WeeklyLessonPlanFormSet(request.POST, instance=course_plan, prefix='lessons') # No permissions needed here
         cia_formset = CIAComponentFormSet(request.POST, instance=course_plan, prefix='cia_components', form_kwargs=cia_kwargs)
 
+        # --- UPDATED: Simplified validation logic ---
+        forms_to_validate = []
+        forms_to_save = []
+
         if is_hod_or_admin:
-            all_forms_valid = form.is_valid() and objective_formset.is_valid() and lesson_formset.is_valid() and cia_formset.is_valid()
-        else:
-            all_forms_valid = lesson_formset.is_valid()
+            # Admins/HODs validate and save everything
+            forms_to_validate = [form, objective_formset, lesson_formset, cia_formset]
+            forms_to_save = [form, objective_formset, lesson_formset, cia_formset]
+        elif is_course_instructor:
+            # Faculty instructors validate and save their permitted sections
+            forms_to_validate = [objective_formset, lesson_formset, cia_formset]
+            forms_to_save = [objective_formset, lesson_formset, cia_formset]
+
+        all_forms_valid = all(f.is_valid() for f in forms_to_validate)
 
         if all_forms_valid:
             with transaction.atomic():
-                if is_hod_or_admin:
-                    form.save()
-                    objective_formset.save()
-                    cia_formset.save()
-                lesson_formset.save()
+                # Loop through and save all the forms that were designated for saving
+                for f in forms_to_save:
+                    f.save()
             messages.success(request, f"Course Plan for '{course_plan.course.code}' updated successfully!")
             return redirect('course_plan_list')
         else:
@@ -705,7 +718,7 @@ def course_plan_update(request, pk):
         'form_title': title, # Use the new conditional title
         'pre_selected_course': course_plan.course,
         'can_edit_full_plan': is_hod_or_admin,
-        'can_edit_weekly_lessons': is_hod_or_admin or is_course_instructor,
+        'can_edit_weekly_lessons': can_edit_main_components,
     }
     return render(request, 'academics/course_plan_form.html', context)
 

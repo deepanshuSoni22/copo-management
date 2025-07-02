@@ -45,13 +45,22 @@
                         <p class="mt-2 text-sm text-red-600">{{ course_plan_form.title.errors.as_text }}</p>
                     {% endif %}
                 </div>
+                
                 <div>
-                    <label for="{{ course_plan_form.description.id_for_label }}" class="block text-sm font-medium text-gray-default mb-1">{{ course_plan_form.description.label }}</label>
-                    {{ course_plan_form.description }}
-                    {% if course_plan_form.description.errors %}
-                        <p class="mt-2 text-sm text-red-600">{{ course_plan_form.description.errors.as_text }}</p>
+                    <label for="{{ course_plan_form.classes_per_week.id_for_label }}" class="block text-sm font-medium text-gray-default mb-1">Classes per week</label>
+                    {{ course_plan_form.classes_per_week }}
+                    {% if course_plan_form.classes_per_week.errors %}
+                        <p class="mt-2 text-sm text-red-600">{{ course_plan_form.classes_per_week.errors.as_text }}</p>
                     {% endif %}
                 </div>
+                <div>
+                    <label for="{{ course_plan_form.total_hours_allotted.id_for_label }}" class="block text-sm font-medium text-gray-default mb-1">Total Hours Allotted</label>
+                    {{ course_plan_form.total_hours_allotted }}
+                    {% if course_plan_form.total_hours_allotted.errors %}
+                        <p class="mt-2 text-sm text-red-600">{{ course_plan_form.total_hours_allotted.errors.as_text }}</p>
+                    {% endif %}
+                </div>
+
                 <div>
                     <label for="{{ course_plan_form.assessment_ratio.id_for_label }}" class="block text-sm font-medium text-gray-default mb-1">{{ course_plan_form.assessment_ratio.label }}</label>
                     {{ course_plan_form.assessment_ratio }}
@@ -196,10 +205,15 @@
                                 {{ form.unit_details }}
                                 {% if form.unit_details.errors %}<p class="mt-2 text-sm text-red-600">{{ form.unit_details.errors.as_text }}</p>{% endif %}
                             </div>
-                            <div class="mt-4">
-                                <label for="{{ form.week_dates.id_for_label }}" class="block text-sm font-medium text-gray-default mb-1">{{ form.week_dates.label }}</label>
-                                {{ form.week_dates }}
-                                {% if form.week_dates.errors %}<p class="mt-2 text-sm text-red-600">{{ form.week_dates.errors.as_text }}</p>{% endif %}
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                                <div>
+                                    <label for="{{ form.start_date.id_for_label }}" class="block text-sm font-medium text-gray-default mb-1">Start date</label>
+                                    {{ form.start_date }}
+                                </div>
+                                <div>
+                                    <label for="{{ form.end_date.id_for_label }}" class="block text-sm font-medium text-gray-default mb-1">End date</label>
+                                    {{ form.end_date }}
+                                </div>
                             </div>
                             <div class="mt-4">
                                 <label for="{{ form.pedagogy.id_for_label }}" class="block text-sm font-medium text-gray-default mb-1">{{ form.pedagogy.label }}</label>
@@ -239,9 +253,15 @@
                                 <label for="id_lessons-__prefix__-unit_details" class="block text-sm font-medium text-gray-default mb-1">Unit details</label>
                                 {{ weekly_lesson_formset.empty_form.unit_details }}
                             </div>
-                            <div class="mt-4">
-                                <label for="id_lessons-__prefix__-week_dates" class="block text-sm font-medium text-gray-default mb-1">Week dates</label>
-                                {{ weekly_lesson_formset.empty_form.week_dates }}
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                                <div>
+                                    <label for="id_lessons-__prefix__-start_date" class="block text-sm font-medium text-gray-default mb-1">Start date</label>
+                                    {{ weekly_lesson_formset.empty_form.start_date }}
+                                </div>
+                                <div>
+                                    <label for="id_lessons-__prefix__-end_date" class="block text-sm font-medium text-gray-default mb-1">End date</label>
+                                    {{ weekly_lesson_formset.empty_form.end_date }}
+                                </div>
                             </div>
                             <div class="mt-4">
                                 <label for="id_lessons-__prefix__-pedagogy" class="block text-sm font-medium text-gray-default mb-1">Pedagogy</label>
