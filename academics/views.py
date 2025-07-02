@@ -930,11 +930,10 @@ def course_create(request):
 
 
 @login_required
-@user_passes_test(is_admin_or_hod, login_url='/accounts/login/')
+@user_passes_test(is_admin_or_hod_or_faculty, login_url='/accounts/login/')
 def course_update(request, pk):
     course = get_object_or_404(Course, pk=pk)
     user_profile = request.user.profile
-
 
      # --- START: NEW PERMISSION LOGIC ---
     # Check if the user has permission to be on this page at all.
@@ -962,8 +961,6 @@ def course_update(request, pk):
         form = CourseForm(instance=course, request=request)
         formset = CourseOutcomeFormSet(instance=course, prefix='outcomes')
         # Prefilter course choices for faculty users (existing logic)
-        if is_faculty(request.user) and not is_admin_or_hod(request.user):
-            form.fields['course'].queryset = request.user.profile.taught_courses.all().order_by('code')
 
     context = {
         'form': form,
