@@ -952,7 +952,7 @@ def course_update(request, pk):
         else:
             messages.error(request, 'Please correct the errors below.')
     else:
-        form = CourseForm(instance=course)
+        form = CourseForm(instance=course, request=request)
         formset = CourseOutcomeFormSet(instance=course, prefix='outcomes')
         # Prefilter course choices for faculty users (existing logic)
         if is_faculty(request.user) and not is_admin_or_hod(request.user):
