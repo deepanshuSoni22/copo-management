@@ -309,23 +309,9 @@ class CourseForm(forms.ModelForm):
         help_text="Select all faculty members assigned to teach this course.",
     )
 
-    # Assesses COs field (fixed from previous errors)
-    assesses_cos = forms.ModelMultipleChoiceField(
-        queryset=CourseOutcome.objects.all().select_related("course").order_by("course__code", "code"),
-        widget=forms.SelectMultiple(
-            attrs={
-                "class": "mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base h-32"
-            }
-        ),
-        label="Assesses Course Outcomes",
-        required=False,
-        help_text="Hold Ctrl/Cmd to select multiple Course Outcomes assessed by this."
-    )
-
-
     class Meta:
         model = Course
-        fields = ["name", "code", "department", "semester", "faculty", "assesses_cos", "course_type", "credits", "prerequisites"]
+        fields = ["name", "code", "department", "semester", "faculty", "course_type", "credits", "prerequisites"]
         widgets = {
             "name": forms.TextInput(
                 attrs={
@@ -339,7 +325,7 @@ class CourseForm(forms.ModelForm):
             ),
             "course_type": forms.Select(attrs={"class": "mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base"}),
             "credits": forms.NumberInput(attrs={"class": "mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base"}),
-            "prerequisites": forms.Textarea(attrs={"class": "mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base", "rows": 3}),
+            "prerequisites": forms.Textarea(attrs={"class": "mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base", "rows": 4}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -384,19 +370,6 @@ class CourseForm(forms.ModelForm):
             if obj.user.first_name
             else obj.user.username
         )
-        # Pre-filter assesses_cos queryset based on selected course if instance exists
-        if getattr(self.instance, "course", None): # This logic is fine, it applies to an *existing* Course instance
-            self.fields["assesses_cos"].queryset = (
-                self.instance.course.course_outcomes.all().order_by("code")
-            )
-        else: # For new Course forms or if no instance.course
-            # If the Course doesn't have a semester yet, filter to no COs.
-            # Otherwise, show all COs if no specific course instance is bound.
-            # For new Course forms, semester is picked after department.
-            # We want to show COs only if semester is selected.
-            # This complex pre-filtering is typically better handled by JS on frontend or dynamic updates.
-            # For a new form, without a semester selected, show no COs initially.
-            self.fields["assesses_cos"].queryset = CourseOutcome.objects.none()
 
     def clean(self):
         cleaned_data = super().clean()
@@ -447,6 +420,13 @@ class CourseOutcomeForm(forms.ModelForm):
                     "rows": 4,
                 }
             ),
+            # --- ADD THIS WIDGET STYLING FOR ALL RBT FIELDS ---
+            "rbt_level_2": forms.CheckboxInput(attrs={'class': 'h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 focus:border-indigo-500 sm:text-base'}),
+            "rbt_level_1": forms.CheckboxInput(attrs={'class': 'h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 focus:border-indigo-500 sm:text-base'}),
+            "rbt_level_3": forms.CheckboxInput(attrs={'class': 'h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 focus:border-indigo-500 sm:text-base'}),
+            "rbt_level_4": forms.CheckboxInput(attrs={'class': 'h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 focus:border-indigo-500 sm:text-base'}),
+            "rbt_level_5": forms.CheckboxInput(attrs={'class': 'h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 focus:border-indigo-500 sm:text-base'}),
+            "rbt_level_6": forms.CheckboxInput(attrs={'class': 'h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 focus:border-indigo-500 sm:text-base'}),
         }
 
     def clean(self):

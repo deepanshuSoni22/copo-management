@@ -48,7 +48,6 @@ urlpatterns = [
 
     # Course Outcome URLs (existing)
     path('course-outcomes/', views.course_outcome_list, name='course_outcome_list'),
-    path('course-outcomes/create/', views.course_outcome_create, name='course_outcome_create'),
     path('course-outcomes/<int:pk>/update/', views.course_outcome_update, name='course_outcome_update'),
     path('course-outcomes/<int:pk>/delete/', views.course_outcome_delete, name='course_outcome_delete'),
 

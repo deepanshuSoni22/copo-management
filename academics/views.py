@@ -910,15 +910,10 @@ def course_create(request):
         # Pass the request object to the form, as it needs to know the user for disabling logic
         form = CourseForm(request.POST, request=request)
         if form.is_valid():
-            course = form.save(commit=False) # Get instance without saving yet
-
-            # If HOD, force assignment of department to their own department (in case field was disabled)
-            if request.user.profile.role == 'HOD' and hod_assigned_department:
-                course.department = hod_assigned_department # Force assignment
+            course = form.save()
             
-            course.save()
-            messages.success(request, f'Course "{course.code} - {course.name}" created successfully!')
-            return redirect('course_list')
+            messages.success(request, f'Course "{course.code} - {course.name}" created successfully! You can now add its outcomes.')
+            return redirect('course_update', pk=course.pk)
         else:
             messages.error(request, 'Please correct the errors below.')
     else: # GET request
@@ -962,14 +957,6 @@ def course_update(request, pk):
         # Prefilter course choices for faculty users (existing logic)
         if is_faculty(request.user) and not is_admin_or_hod(request.user):
             form.fields['course'].queryset = request.user.profile.taught_courses.all().order_by('code')
-
-        # FIX: Filter assesses_cos queryset based on the instance's course via semester
-        if course.semester: # Check if semester is assigned
-            form.fields['assesses_cos'].queryset = CourseOutcome.objects.filter(
-                course__semester=course.semester # Filter by course's semester
-            ).order_by('code')
-        else: # If course has no semester assigned yet, show all COs or none
-            form.fields['assesses_cos'].queryset = CourseOutcome.objects.none() # Show no COs if no semester
 
     context = {
         'form': form,
