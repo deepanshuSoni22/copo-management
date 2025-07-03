@@ -100,16 +100,25 @@ class Semester(models.Model):
 
 
 class ProgramOutcome(models.Model):
-    code = models.CharField(max_length=20, unique=True, help_text="e.g., PO1, PO2")
+    department = models.ForeignKey(
+        Department, 
+        on_delete=models.CASCADE, 
+        related_name='program_outcomes',
+    )
+
+    code = models.CharField(max_length=20, help_text="e.g., PO1, PO2")
     description = models.TextField()
 
     def __str__(self):
-        return f"{self.code}: {self.description[:50]}..."  # Display first 50 chars of description
+        return f"{self.department.name} - {self.code}"
 
     class Meta:
         verbose_name = "Program Outcome"
         verbose_name_plural = "Program Outcomes"
-        ordering = ["code"]  # Order by code (e.g., PO1, PO2)
+        # --- ADD THIS to ensure code is unique within a department ---
+        unique_together = ('department', 'code')
+        ordering = ["department__name", "code"]
+
 
 
 class CourseType(models.TextChoices):
@@ -223,10 +232,10 @@ class CourseOutcome(models.Model):
 
 class CorrelationLevel(models.IntegerChoices):
     # Defining correlation levels as choices
+    NONE = 0, "None"  # Added None explicitly for unmapped state
     LOW = 1, "Low"
     MEDIUM = 2, "Medium"
     HIGH = 3, "High"
-    NONE = 0, "None"  # Added None explicitly for unmapped state
 
 
 class COPOMapping(models.Model):

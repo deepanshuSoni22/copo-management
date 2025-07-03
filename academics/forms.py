@@ -262,9 +262,15 @@ class DepartmentForm(forms.ModelForm):
 
 
 class ProgramOutcomeForm(forms.ModelForm):
+    department = forms.ModelChoiceField(
+        queryset=Department.objects.all().order_by('name'),
+        empty_label="Select Department",
+        widget=forms.Select(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm'})
+    )
+
     class Meta:
         model = ProgramOutcome
-        fields = ["code", "description"]
+        fields = ["department", "code", "description"]
         widgets = {
             "code": forms.TextInput(
                 attrs={
@@ -278,6 +284,26 @@ class ProgramOutcomeForm(forms.ModelForm):
                 }
             ),
         }
+    
+    def __init__(self, *args, **kwargs):
+        # Pop the user object passed from the view
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+
+        # If the user is an HOD, pre-fill and disable the department field
+        if user and hasattr(user, 'profile') and user.profile.role == 'HOD':
+            hod_department = user.profile.department
+            if hod_department:
+                self.fields['department'].queryset = Department.objects.filter(pk=hod_department.pk)
+                self.fields['department'].initial = hod_department
+                self.fields['department'].disabled = True
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        # If the department field was disabled, re-insert its value for saving
+        if self.fields['department'].disabled:
+            cleaned_data['department'] = self.initial.get('department')
+        return cleaned_data
 
 
 class CourseForm(forms.ModelForm):

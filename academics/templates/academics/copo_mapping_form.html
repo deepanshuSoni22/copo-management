@@ -1,88 +1,84 @@
 {# academics/templates/academics/copo_mapping_form.html #}
 {% extends 'base.html' %}
-{% load static %}
-{% load academics_filters %} {# ADD THIS LINE #}
+{% load academics_filters %}
 
-{% block title %}Map CO-PO: {{ course_outcome.code }} for {{ course_outcome.course.code }}{% endblock %}
+{% block title %}{{ form_title }}{% endblock %}
 
 {% block content %}
-    <div class="bg-white rounded-lg shadow-md p-6 mb-8 max-w-4xl mx-auto">
-        <h1 class="text-3xl font-bold text-gray-800 mb-6">
-            Map Course Outcome: <span class="text-indigo-700">{{ course_outcome.code }}</span>
+    <div class="bg-white rounded-lg shadow-md p-3 sm:p-4 lg:p-6 mb-8 max-w-4xl mx-auto">
+        <h1 class="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-800 mb-4">
+            Map Course Outcome: <span class="text-indigo-600">{{ course_outcome.code }}</span>
         </h1>
-        <p class="text-gray-600 mb-8">
-            <strong>Course:</strong> {{ course_outcome.course.code }} - {{ course_outcome.course.name }}
-            <br>
-            <strong>CO Description:</strong> {{ course_outcome.description }}
-        </p>
+        <div class="mb-6 p-4 bg-gray-50 border rounded-lg text-sm sm:text-base">
+            <p class="text-gray-700"><strong>Course:</strong> {{ course_outcome.course.code }} - {{ course_outcome.course.name }}</p>
+            <p class="text-gray-700 mt-1"><strong>CO Description:</strong> {{ course_outcome.description }}</p>
+        </div>
 
-        <form method="post" class="space-y-6">
-            {% csrf_token %}
-
-            {# Display general errors (if any, from form_errors dict from view) #}
-            {% if form_errors.general %}
-                <div class="bg-red-100 text-red-700 border border-red-200 p-3 rounded-md mb-4">
-                    <p>{{ form_errors.general }}</p>
-                </div>
-            {% endif %}
-
-            <div class="overflow-x-auto border border-gray-200 rounded-lg">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Program Outcome
-                            </th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Correlation Level
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-                        {% for po in all_program_outcomes %}
-                            <tr class="hover:bg-gray-50 transition duration-150 ease-in-out">
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                    {{ po.code }}: {{ po.description|truncatechars:100 }}
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                    <select name="correlation_level_{{ po.id }}" id="id_correlation_level_{{ po.id }}"
-                                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                                        {% for value, label in correlation_choices %}
-                                            <option value="{{ value }}" 
-                                                    {% if value|stringformat:"s" == existing_mappings_dict|get_item:po.id|stringformat:"s" %}selected{% elif value == 0 and existing_mappings_dict|get_item:po.id is None %}selected{% endif %}>
-                                                {{ label }}
-                                            </option>
-                                        {% endfor %}
-                                    </select>
-                                    {# FIX STARTS HERE #}
-                                    {% comment %} Original problematic line:
-                                    {% if form_errors|get_item:('correlation_level_' ~ po.id) %}
-                                    {% endcomment %}
-                                    {% with current_po_id_string=po.id|stringformat:"s" %}
-                                    {% if form_errors|get_item:"correlation_level_"|add:current_po_id_string %}
-                                        <p class="mt-2 text-xs text-red-600">
-                                            {{ form_errors|get_item:"correlation_level_"|add:current_po_id_string }}
-                                        </p>
-                                    {% endif %}
-                                    {% endwith %}
-                                    {# FIX ENDS HERE #}
-                                </td>
+        {% if all_program_outcomes %}
+            <form method="post">
+                {% csrf_token %}
+                <div class="hidden md:block overflow-x-auto border border-gray-200 rounded-lg">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Program Outcome</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/3">Correlation Level</th>
                             </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {% for po in all_program_outcomes %}
+                                <tr>
+                                    <td class="px-6 py-4 text-sm font-medium text-gray-900">
+                                        {{ po.code }}: <span class="text-gray-600 font-normal">{{ po.description }}</span>
+                                    </td>
+                                    <td class="px-6 py-4 text-sm">
+                                        <select name="correlation_level_{{ po.id }}" class="mt-1 block w-full pl-3 pr-10 py-2 border-gray-300 rounded-md">
+                                            {% for value, label in correlation_choices %}
+                                                <option value="{{ value }}" {% if value|stringformat:"s" == existing_mappings_dict|get_item:po.id|stringformat:"s" %}selected{% endif %}>
+                                                    {{ label }}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
 
-            <div class="flex items-center space-x-4 mt-6">
-                <button type="submit"
-                        class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out">
-                    Save Mappings
-                </button>
-                <a href="{% url 'course_outcome_list' %}"
-                   class="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out">
-                    Cancel
-                </a>
+                <div class="md:hidden space-y-3">
+                    {% for po in all_program_outcomes %}
+                        <div class="bg-white p-4 rounded-lg border">
+                            <p class="text-base font-semibold text-gray-900">{{ po.code }}</p>
+                            <p class="text-sm text-gray-600 mt-1">{{ po.description }}</p>
+                            <div class="mt-4 pt-3 border-t">
+                                 <label for="id_correlation_level_{{ po.id }}_mobile" class="block text-sm font-medium text-gray-700">Correlation Level</label>
+                                 <select name="correlation_level_{{ po.id }}" id="id_correlation_level_{{ po.id }}_mobile" class="mt-1 block w-full pl-3 pr-10 py-2 border-gray-300 rounded-md">
+                                    {% for value, label in correlation_choices %}
+                                        <option value="{{ value }}" {% if value|stringformat:"s" == existing_mappings_dict|get_item:po.id|stringformat:"s" %}selected{% endif %}>
+                                            {{ label }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <div class="flex items-center space-x-4 mt-6 pt-6 border-t">
+                    <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
+                        Save Mappings
+                    </button>
+                    <a href="{% url 'course_outcome_list' %}" class="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Cancel
+                    </a>
+                </div>
+            </form>
+        {% else %}
+            <div class="text-center py-10 bg-gray-50 rounded-lg">
+                <p class="text-gray-600">No Program Outcomes have been created for this department yet.</p>
+                <p class="text-sm text-gray-500 mt-2">Please ask an Admin or HOD to add them first.</p>
             </div>
-        </form>
+        {% endif %}
     </div>
 {% endblock %}

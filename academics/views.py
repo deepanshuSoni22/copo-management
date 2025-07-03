@@ -753,29 +753,32 @@ def course_plan_delete(request, pk):
 
 
 @login_required
-@user_passes_test(is_admin_or_superuser, login_url="/accounts/login/")
+@user_passes_test(is_admin_or_hod, login_url="/accounts/login/")
 def program_outcome_list(request):
-    program_outcomes = ProgramOutcome.objects.all().order_by("code")
+    program_outcomes = ProgramOutcome.objects.all().select_related('department')
+    # If user is an HOD, filter to their department only
+    if is_hod(request.user):
+        program_outcomes = program_outcomes.filter(department=request.user.profile.department)
+
     return render(
         request,
         "academics/program_outcome_list.html",
-        {"program_outcomes": program_outcomes},
+        {"program_outcomes": program_outcomes.order_by("department__name", "code")},
     )
 
 
 @login_required
-@user_passes_test(is_admin_or_superuser, login_url="/accounts/login/")
+@user_passes_test(is_admin_or_hod, login_url="/accounts/login/")
 def program_outcome_create(request):
     if request.method == "POST":
-        form = ProgramOutcomeForm(request.POST)
+        form = ProgramOutcomeForm(request.POST, user=request.user)
         if form.is_valid():
-            form.save()
+            form.save() # The form's clean() method handles HOD logic
             messages.success(request, "Program Outcome created successfully!")
             return redirect("program_outcome_list")
-        else:
-            messages.error(request, "Please correct the errors below.")
     else:
-        form = ProgramOutcomeForm()
+        form = ProgramOutcomeForm(user=request.user)
+
     return render(
         request,
         "academics/program_outcome_form.html",
@@ -784,19 +787,24 @@ def program_outcome_create(request):
 
 
 @login_required
-@user_passes_test(is_admin_or_superuser, login_url="/accounts/login/")
+@user_passes_test(is_admin_or_hod, login_url="/accounts/login/")
 def program_outcome_update(request, pk):
     program_outcome = get_object_or_404(ProgramOutcome, pk=pk)
+
+    # HOD can only edit POs in their own department
+    if is_hod(request.user) and program_outcome.department != request.user.profile.department:
+        messages.error(request, "You do not have permission to edit this Program Outcome.")
+        return redirect("program_outcome_list")
+
     if request.method == "POST":
-        form = ProgramOutcomeForm(request.POST, instance=program_outcome)
+        form = ProgramOutcomeForm(request.POST, instance=program_outcome, user=request.user)
         if form.is_valid():
             form.save()
             messages.success(request, "Program Outcome updated successfully!")
             return redirect("program_outcome_list")
-        else:
-            messages.error(request, "Please correct the errors below.")
     else:
-        form = ProgramOutcomeForm(instance=program_outcome)
+        form = ProgramOutcomeForm(instance=program_outcome, user=request.user)
+        
     return render(
         request,
         "academics/program_outcome_form.html",
@@ -805,13 +813,20 @@ def program_outcome_update(request, pk):
 
 
 @login_required
-@user_passes_test(is_admin_or_superuser, login_url="/accounts/login/")
+@user_passes_test(is_admin_or_hod, login_url="/accounts/login/")
 def program_outcome_delete(request, pk):
     program_outcome = get_object_or_404(ProgramOutcome, pk=pk)
+
+    # HOD can only delete POs in their own department
+    if is_hod(request.user) and program_outcome.department != request.user.profile.department:
+        messages.error(request, "You do not have permission to delete this Program Outcome.")
+        return redirect("program_outcome_list")
+
     if request.method == "POST":
         program_outcome.delete()
         messages.success(request, "Program Outcome deleted successfully!")
         return redirect("program_outcome_list")
+
     return render(
         request,
         "academics/program_outcome_confirm_delete.html",
@@ -1011,13 +1026,16 @@ def course_outcome_list(request):
         course_outcomes = course_outcomes.filter(course_id=selected_course_id)
     # --- END OF NEW LOGIC ---
 
+    can_manage_outcomes = is_admin(request.user) or is_hod(request.user)
+
     context = {
         # Optimize the final query and pass it to the context
-        'course_outcomes': course_outcomes.select_related("course").order_by("course__code", "code"),
+        'course_outcomes': course_outcomes.select_related("course").prefetch_related('po_mappings__program_outcome').order_by("course__code", "code"),
         # Pass the necessary data for the filter dropdown
         'all_courses': courses_for_filter,
         'selected_course_id': selected_course_id,
-        'form_title': 'Course Outcomes' # Add form_title to context
+        'form_title': 'Course Outcomes', # Add form_title to context
+        'can_manage_outcomes': can_manage_outcomes, # <-- Pass flag to template
     }
     return render(request, "academics/course_outcome_list.html", context)
 
@@ -1069,45 +1087,6 @@ def course_outcome_create(request):
 
 @login_required
 @user_passes_test(is_admin_or_hod_or_faculty, login_url="/accounts/login/")
-def course_outcome_update(request, pk):
-    co = get_object_or_404(CourseOutcome, pk=pk)
-
-    # Permission check: Faculty can only update COs for courses they teach
-    if is_faculty(request.user) and not is_admin_or_hod(request.user):
-        if co.course not in request.user.profile.taught_courses.all():
-            messages.error(
-                request, "You do not have permission to update this Course Outcome."
-            )
-            return redirect("course_outcome_list")  # Redirect away if no permission
-
-    if request.method == "POST":
-        form = CourseOutcomeForm(request.POST, instance=co)
-        if form.is_valid():
-            co = form.save()
-            messages.success(
-                request,
-                f'Course Outcome "{co.code}" for {co.course.code} updated successfully!',
-            )
-            return redirect("course_outcome_list")
-        else:
-            messages.error(request, "Please correct the errors below.")
-    else:
-        form = CourseOutcomeForm(instance=co)
-        # If user is faculty, pre-filter courses in the form for consistency
-        if is_faculty(request.user) and not is_admin_or_hod(request.user):
-            form.fields["course"].queryset = (
-                request.user.profile.taught_courses.all().order_by("code")
-            )
-
-    return render(
-        request,
-        "academics/course_outcome_form.html",
-        {"form": form, "form_title": "Update Course Outcome"},
-    )
-
-
-@login_required
-@user_passes_test(is_admin_or_hod_or_faculty, login_url="/accounts/login/")
 def course_outcome_delete(request, pk):
     co = get_object_or_404(CourseOutcome, pk=pk)
 
@@ -1139,105 +1118,52 @@ def course_outcome_delete(request, pk):
 def copo_mapping_view(request, co_pk):
     course_outcome = get_object_or_404(CourseOutcome, pk=co_pk)
 
-    # Permission check (existing code)
     if is_faculty(request.user) and not is_admin_or_hod(request.user):
         if course_outcome.course not in request.user.profile.taught_courses.all():
-            messages.error(
-                request,
-                "You do not have permission to modify mappings for this Course Outcome.",
-            )
+            messages.error(request, "You do not have permission to modify mappings for this Course Outcome.")
             return redirect("course_outcome_list")
 
-    all_program_outcomes = ProgramOutcome.objects.all().order_by("code")
-
-    # Get existing mappings for this Course Outcome
-    # This is needed for both GET (display) and POST (initial state for processing)
-    existing_mappings = COPOMapping.objects.filter(
-        course_outcome=course_outcome
-    ).values("program_outcome_id", "correlation_level")
+    # --- THIS IS THE FIX ---
+    # Filter Program Outcomes to only those in the same department as the Course Outcome
+    all_program_outcomes = ProgramOutcome.objects.filter(
+        department=course_outcome.course.department
+    ).order_by("code")
+    # --- END OF FIX ---
 
     if request.method == "POST":
-        # --- MANUAL PROCESSING OF MAPPINGS (FROM PREVIOUS FIX) ---
-        errors = {}  # To collect any custom errors during processing
-
+        print(request.POST)  # Temporarily inspect POST data
         with transaction.atomic():
+            # 1. Delete all existing mappings for this CO first.
+            COPOMapping.objects.filter(course_outcome=course_outcome).delete()
+
+            # 2. Loop through all POs and create new mappings for those that have a level selected.
             for po in all_program_outcomes:
                 field_name = f"correlation_level_{po.id}"
-                submitted_level = request.POST.get(field_name)
-
-                if submitted_level:
-                    try:
-                        submitted_level = int(submitted_level)
-                    except ValueError:
-                        errors[field_name] = "Invalid level."
-                        submitted_level = CorrelationLevel.NONE.value
-                else:
-                    submitted_level = CorrelationLevel.NONE.value
-
-                mapping_instance = COPOMapping.objects.filter(
-                    course_outcome=course_outcome, program_outcome=po
-                ).first()
-
-                if submitted_level == CorrelationLevel.NONE.value:
-                    if mapping_instance:
-                        mapping_instance.delete()
-                else:
-                    if submitted_level < 0 or submitted_level > 3:
-                        errors[field_name] = "Invalid correlation level."
-                        continue
-
-                    if mapping_instance:
-                        mapping_instance.correlation_level = submitted_level
-                        mapping_instance.save()
-                    else:
-                        COPOMapping.objects.create(
-                            course_outcome=course_outcome,
-                            program_outcome=po,
-                            correlation_level=submitted_level,
-                        )
-
-            # --- Check for errors after manual processing ---
-            if errors:
-                messages.error(
-                    request,
-                    "There were errors processing some mappings. Please review.",
-                )
-                # Re-fetch existing mappings to show current state after partial saves/errors
-                existing_mappings_dict = {
-                    m["program_outcome_id"]: m["correlation_level"]
-                    for m in COPOMapping.objects.filter(
-                        course_outcome=course_outcome
-                    ).values("program_outcome_id", "correlation_level")
-                }
-
-                context = {
-                    "course_outcome": course_outcome,
-                    # 'formset': MappingFormSet, # REMOVE THIS LINE
-                    "all_program_outcomes": all_program_outcomes,
-                    "correlation_choices": CorrelationLevel.choices,
-                    "existing_mappings_dict": existing_mappings_dict,  # Pass current state
-                    "form_errors": errors,  # Pass specific field errors
-                }
-                return render(request, "academics/copo_mapping_form.html", context)
-            else:
-                messages.success(
-                    request,
-                    f"CO-PO mappings for {course_outcome.code} updated successfully!",
-                )
-                return redirect("course_outcome_list")
+                submitted_level_list = request.POST.getlist(field_name)
+                submitted_level_str = submitted_level_list[0] if submitted_level_list else None
+                # --- THIS IS THE CORRECTED LOGIC ---
+                # Check if the submitted value is a valid integer (1, 2, or 3)
+                if submitted_level_str and submitted_level_str in ['1', '2', '3']:
+                    COPOMapping.objects.create(
+                        course_outcome=course_outcome,
+                        program_outcome=po,
+                        correlation_level=int(submitted_level_str)
+                    )
+                    print(f"✅ Created mapping: CO={course_outcome.code}, PO={po.code}, Level={submitted_level_str}")  # 🐛 Confirm mapping creation
+        
+        messages.success(request, f"CO-PO mappings for {course_outcome.code} updated successfully!")
+        return redirect("course_outcome_list")
 
     else:  # GET request
-        # Prepare existing mappings in a dictionary for easy lookup in template
-        existing_mappings_dict = {
-            m["program_outcome_id"]: m["correlation_level"] for m in existing_mappings
-        }
+        existing_mappings = COPOMapping.objects.filter(course_outcome=course_outcome)
+        existing_mappings_dict = {m.program_outcome_id: m.correlation_level for m in existing_mappings}
 
         context = {
             "course_outcome": course_outcome,
-            # 'formset': formset, # REMOVE THIS LINE IF IT WAS THERE
             "all_program_outcomes": all_program_outcomes,
             "correlation_choices": CorrelationLevel.choices,
-            "existing_mappings_dict": existing_mappings_dict,  # Pass for template pre-selection
+            "existing_mappings_dict": existing_mappings_dict,
+            "form_title": f"Map CO-PO: {course_outcome.code}"
         }
         return render(request, "academics/copo_mapping_form.html", context)
 
