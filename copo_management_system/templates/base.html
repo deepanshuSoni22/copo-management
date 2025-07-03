@@ -702,7 +702,7 @@
             <main class="flex-grow container mx-auto mt-4 sm:mt-6 p-3 sm:p-4 lg:p-6 xl:p-8 max-w-none">
                 {# Django Messages Display - Responsive #}
                 {% if messages %}
-                    <div class="mb-4 sm:mb-6">
+                    <div class="django-messages-container mb-4 sm:mb-6">
                         {% for message in messages %}
                             <div class="django-message p-3 sm:p-4 mb-3 sm:mb-4 rounded-lg text-xs sm:text-sm border
                                         {% if message.tags == 'success' %}bg-green-100 text-green-800 border-green-200
@@ -732,17 +732,32 @@
     {# --- JavaScript for Mobile Menu Toggle with improved responsiveness --- #}
     {% block extra_js %}
     <script>
-        setTimeout(function () {
-            const alerts = document.querySelectorAll('.django-message');
-            alerts.forEach(function (alert) {
-                alert.style.transition = "opacity 0.3s ease-out";
-                alert.style.opacity = '0';
-                setTimeout(() => alert.remove(), 500);
-            });
-        }, 600);
-    </script>    
-    <script>
         document.addEventListener('DOMContentLoaded', function() {
+            const messagesContainer = document.querySelector('.django-messages-container');
+            if (messagesContainer) {
+                setTimeout(function() {
+                    // Select all individual alert messages within the container
+                    const alerts = messagesContainer.querySelectorAll('.django-message');
+                    
+                    alerts.forEach(function(alert) {
+                        // Start the fade out transition
+                        alert.style.transition = 'opacity 0.3s ease-out';
+                        alert.style.opacity = '0';
+                        
+                        // After the transition ends, hide the element completely
+                        setTimeout(() => {
+                            alert.style.display = 'none';
+                            
+                            // Check if all messages are hidden, then hide the container
+                            const allHidden = Array.from(alerts).every(a => a.style.display === 'none');
+                            if (allHidden) {
+                                messagesContainer.style.display = 'none';
+                            }
+                        }, 500); // This should match the transition duration
+                    });
+                }, 1000); // Message will start to fade after 3 seconds
+            }
+
             const openMenuBtn = document.getElementById('open-mobile-menu');
             const closeMenuBtn = document.getElementById('close-mobile-menu');
             const mobileMenuDrawer = document.getElementById('mobile-menu-drawer');
@@ -805,7 +820,7 @@
                 }
             }
         });
-    </script>
+    </script>    
     {% endblock %}
     {% block extra_js22 %}{% endblock %}
 </body>
