@@ -739,8 +739,9 @@ def course_plan_delete(request, pk):
             return redirect('course_plan_list')
 
     if request.method == 'POST':
+        course_code = course_plan.course.code
         course_plan.delete()
-        messages.success(request, f"Course Plan for '{course_plan.course.code}' deleted successfully.")
+        messages.success(request, f"Course Plan for '{course_code}' deleted successfully.")
         return redirect('course_plan_list')
     
     context = {
