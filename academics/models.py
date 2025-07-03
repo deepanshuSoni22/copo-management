@@ -306,7 +306,7 @@ class Assessment(models.Model):
         related_name="assessments",
     )
     max_marks = models.DecimalField(
-        max_digits=5, decimal_places=2, help_text="Maximum marks for this assessment"
+        max_digits=5, decimal_places=0, help_text="Maximum marks for this assessment"
     )
     date = models.DateField(help_text="Date the assessment was conducted/due")
 

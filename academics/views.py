@@ -1697,27 +1697,38 @@ def co_attainment_report_list(request):
 @login_required
 @user_passes_test(is_admin_or_hod_or_faculty, login_url="/accounts/login/")
 def po_attainment_report_list(request):
-    academic_years = AcademicYear.objects.all().order_by("-start_date")
+    user_profile = request.user.profile
 
-    selected_academic_year_id = request.GET.get("academic_year")
-
+    # --- START: Logic to scope dropdowns and initial queryset ---
+    # Base querysets
     po_attainments = ProgramOutcomeAttainment.objects.all()
+    academic_years_for_filter = AcademicYear.objects.all().order_by("-start_date")
+    departments_for_filter = Department.objects.all().order_by("name")
+
+    # Filter based on user's role
+    if is_hod(user_profile.user):
+        hod_department = user_profile.department
+        po_attainments = po_attainments.filter(program_outcome__department=hod_department)
+        departments_for_filter = departments_for_filter.filter(pk=hod_department.pk)
+    # --- END: Role-based filtering ---
 
     # Apply filters from GET parameters
-    if selected_academic_year_id:
-        po_attainments = po_attainments.filter(
-            academic_year__id=selected_academic_year_id
-        )
+    selected_academic_year_id = request.GET.get("academic_year")
+    selected_department_id = request.GET.get("department")
 
-    # Optimize query with select_related
-    po_attainments = po_attainments.select_related(
-        "program_outcome", "academic_year"
-    ).order_by("-academic_year__start_date", "program_outcome__code")
+    if selected_academic_year_id:
+        po_attainments = po_attainments.filter(academic_year_id=selected_academic_year_id)
+    if selected_department_id:
+        po_attainments = po_attainments.filter(program_outcome__department_id=selected_department_id)
 
     context = {
-        "po_attainments": po_attainments,
-        "academic_years": academic_years,
+        "po_attainments": po_attainments.select_related(
+            "program_outcome__department", "academic_year"
+        ).order_by("-academic_year__start_date", "program_outcome__department__name", "program_outcome__code"),
+        "academic_years": academic_years_for_filter,
+        "departments": departments_for_filter, # Add departments for the filter
         "selected_academic_year_id": selected_academic_year_id,
+        "selected_department_id": selected_department_id, # Pass to template
         "form_title": "Program Outcome Attainment Report",
     }
     return render(request, "academics/po_attainment_report_list.html", context)
@@ -1978,10 +1989,13 @@ def assignment_update(request, pk):
     assignment = get_object_or_404(Assignment, pk=pk, created_by=request.user.profile)
     
     if request.method == 'POST':
+        print("POST DATA:", request.POST)
         # Pass user to the form to scope the course/rubric dropdowns
         form = AssignmentForm(request.POST, instance=assignment, user=request.user)
         if form.is_valid():
-            form.save()
+            assignment = form.save(commit=False)
+            assignment.created_by = request.user.profile  # Optional, keep if necessary
+            assignment.save()
             form.save_m2m()
             messages.success(request, f"Assignment '{assignment.title}' updated successfully.")
             return redirect('assignment_list')
@@ -1990,7 +2004,8 @@ def assignment_update(request, pk):
         
     return render(request, 'academics/assignment_form.html', {
         'form': form, 
-        'form_title': f'Update Assignment: {assignment.title}'
+        'form_title': f'Update Assignment: {assignment.title}',
+        'selected_co_ids': list(assignment.assesses_cos.values_list('id', flat=True))
     })
 
 
@@ -2415,15 +2430,18 @@ def get_course_outcomes_api(request, course_id):
     Returns data as JSON.
     """
     try:
-        course = get_object_or_404(Course, pk=course_id)
-        
-        # Security Check: Ensure the user has permission to access this course's COs
         user_profile = request.user.profile
-        if not (is_admin(request.user) or is_hod(request.user) or course in user_profile.taught_courses.all()):
-            return JsonResponse({'error': 'Permission denied'}, status=403)
+        course = get_object_or_404(Course, pk=course_id)
+
+        # Security Check: Ensure the user has permission to access this course's COs
+        is_admin_or_hod = user_profile.role in ['ADMIN', 'HOD'] or request.user.is_superuser
+        is_assigned_faculty = course in user_profile.taught_courses.all()
+
+        if not (is_admin_or_hod or is_assigned_faculty):
+            return JsonResponse({'error': 'Permission denied to access course outcomes.'}, status=403)
 
         outcomes = CourseOutcome.objects.filter(course=course).values('id', 'code', 'description')
         return JsonResponse(list(outcomes), safe=False)
         
     except Course.DoesNotExist:
-        return JsonResponse({'error': 'Course not found'}, status=404)
+        return JsonResponse({'error': 'Course not found.'}, status=404)

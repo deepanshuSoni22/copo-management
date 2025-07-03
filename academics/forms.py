@@ -909,7 +909,7 @@ class AssignmentForm(forms.ModelForm):
             'assignment_type': forms.Select(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm', 'id': 'id_assignment_type'}),
             'rubric': forms.Select(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm'}),
             'cia_component': forms.Select(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm'}),
-            'max_marks': forms.NumberInput(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm'}),
+            'max_marks': forms.NumberInput(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm', 'step':0, 'min':0}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -924,14 +924,18 @@ class AssignmentForm(forms.ModelForm):
 
             self.fields['cia_component'].queryset = CIAComponent.objects.filter(course_plan__course__in=taught_courses)
 
-         # --- ADD LOGIC TO FILTER THE CO CHECKLIST ---
-        # If we are editing an existing assignment, the course is already set.
-        if self.instance and self.instance.pk:
-            self.fields['assesses_cos'].queryset = CourseOutcome.objects.filter(course=self.instance.course).order_by('code')
-        else:
-            self.fields['assesses_cos'].queryset = CourseOutcome.objects.none()
-        # This part requires JavaScript on the frontend to update the checklist
-        # when the user changes the "Course" dropdown on the create page.
+            # --- START OF NEW LOGIC ---
+            # This block makes the form work for both Create (POST) and Update pages.
+            if 'course' in self.data:  # Check if form is being submitted
+                try:
+                    course_id = int(self.data.get('course'))
+                    self.fields['assesses_cos'].queryset = CourseOutcome.objects.filter(course_id=course_id).order_by('code')
+                except (ValueError, TypeError):
+                    pass  # Invalid input; let the form validation handle it
+            elif self.instance and self.instance.pk:
+                # This is for the Update page, to show already saved COs
+                self.fields['assesses_cos'].queryset = self.instance.course.course_outcomes.all().order_by('code')
+            # --- END OF NEW LOGIC ---
 
         # Make rubric and cia_component not required by default
         self.fields['rubric'].required = False
