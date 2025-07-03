@@ -5,6 +5,7 @@ from django.forms import modelformset_factory
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages  # For displaying feedback messages
 from django.views.generic import View  # For class-based views if preferred
+from django.http import JsonResponse # <-- Add this import at the top
 from .forms import (
     AcademicYearForm,
     DepartmentForm,
@@ -1495,306 +1496,152 @@ def student_mark_entry(request, assessment_pk):
     return render(request, "academics/student_mark_entry_form.html", context)
 
 
-# --- Attainment Calculation Functions ---
+# --- Attainment Calculation Engine ---
 
-
-def calculate_co_attainment_for_course(course_obj, academic_year_obj):
-    print(
-        f"\n--- Starting CO Attainment Calculation for Course: {course_obj.code} ({course_obj.name}), Year: {academic_year_obj} ---"
-    )  # DEBUG
-
-    course_outcomes = CourseOutcome.objects.filter(course=course_obj).prefetch_related(
-        "assessed_by_assessments__student_marks"
-    )
-    print(f"  Number of COs for this course: {course_outcomes.count()}")  # DEBUG
-
-    if not course_outcomes.exists():
-        print(
-            "  No Course Outcomes found for this course. Skipping CO attainment."
-        )  # DEBUG
-        return False  # No COs to calculate for this course
+# UPDATE a single line in this function signature
+def calculate_co_attainment_for_course(course_obj, academic_year_obj, success_threshold=60.0):
+    """
+    Calculates the attainment for each Course Outcome (CO) of a given course
+    for a specific academic year.
+    """
+    course_outcomes = CourseOutcome.objects.filter(course=course_obj)
 
     for co in course_outcomes:
-        print(
-            f"\n  Processing Course Outcome: {co.code} - {co.description[:30]}..."
-        )  # DEBUG
+        # Find all assignments that assess this specific CO for the given academic year
+        assignments_for_co = Assignment.objects.filter(
+            assesses_cos=co,
+            course__semester__academic_department__academic_year=academic_year_obj
+        )
+        
+        if not assignments_for_co.exists():
+            continue
 
-        total_co_marks_possible = 0
-        total_co_marks_obtained = 0
+        # Get all graded submissions for these assignments
+        submissions = Submission.objects.filter(
+            assignment__in=assignments_for_co,
+            marks_obtained__isnull=False
+        ).values('student').annotate(
+            total_marks=Sum('marks_obtained'),
+            max_marks=Sum('assignment__max_marks')
+        )
 
-        # Get all assessments that assess this CO for the given academic year
-        assessments_for_co = co.assessed_by_assessments.filter(
-            course=course_obj,  # Ensure assessment is for the specific course
-            academic_year=academic_year_obj,  # Ensure assessment is for the specific academic year
-        ).distinct()
+        if not submissions:
+            continue
 
-        print(
-            f"    Number of Assessments linked to CO {co.code} (in this course/year): {assessments_for_co.count()}"
-        )  # DEBUG
+        students_above_threshold = 0
+        total_students_with_grades = submissions.count()
 
-        if not assessments_for_co.exists():
-            print(
-                f"    No relevant assessments found for CO {co.code}. Attainment will be None."
-            )  # DEBUG
-            attainment_percentage = None
+        for sub in submissions:
+            if sub['max_marks'] > 0:
+                percentage = (sub['total_marks'] / sub['max_marks']) * 100
+                if percentage >= success_threshold:
+                    students_above_threshold += 1
+
+        if total_students_with_grades > 0:
+            attainment_percentage = (students_above_threshold / total_students_with_grades) * 100
         else:
-            # Aggregate marks from relevant assessments for this CO
-            current_co_total_possible_marks = (
-                0  # sum of max_marks * students who took it
-            )
-            current_co_total_obtained_marks = 0  # sum of actual marks obtained
+            attainment_percentage = 0
 
-            for assessment in assessments_for_co:
-                print(
-                    f"      - Processing Assessment: {assessment.name} (Max Marks: {assessment.max_marks})"
-                )  # DEBUG
-
-                # Get student marks only for this specific assessment
-                student_marks_queryset = StudentMark.objects.filter(
-                    assessment=assessment
-                )
-                num_students_with_marks = student_marks_queryset.count()
-
-                print(
-                    f"        Students with marks in this assessment: {num_students_with_marks}"
-                )  # DEBUG
-
-                if num_students_with_marks > 0:
-                    sum_obtained_for_assessment = student_marks_queryset.aggregate(
-                        total_marks=Sum("marks_obtained")
-                    )["total_marks"]
-
-                    if sum_obtained_for_assessment is not None:
-                        current_co_total_obtained_marks += sum_obtained_for_assessment
-                        current_co_total_possible_marks += (
-                            assessment.max_marks * num_students_with_marks
-                        )
-                        print(
-                            f"        Obtained: {sum_obtained_for_assessment}, Possible: {assessment.max_marks * num_students_with_marks}"
-                        )  # DEBUG
-                    else:
-                        print(
-                            "        No obtained marks sum (might be all None or 0 in DB, but count > 0)."
-                        )  # DEBUG
-                else:
-                    print(
-                        "        No students with marks found for this assessment."
-                    )  # DEBUG
-
-            # After iterating through all assessments for this CO
-            total_possible_marks_from_assessments = current_co_total_possible_marks
-            total_obtained_marks_from_assessments = current_co_total_obtained_marks
-
-            print(
-                f"    Total for CO {co.code}: Obtained={total_obtained_marks_from_assessments}, Possible={total_possible_marks_from_assessments}"
-            )  # DEBUG
-
-            if total_possible_marks_from_assessments > 0:
-                attainment_percentage = (
-                    total_obtained_marks_from_assessments
-                    / total_possible_marks_from_assessments
-                ) * 100
-                attainment_percentage = round(attainment_percentage, 2)
-                print(
-                    f"    Calculated Attainment % for CO {co.code}: {attainment_percentage}"
-                )  # DEBUG
-            else:
-                attainment_percentage = None
-                print(
-                    f"    Total possible marks for CO {co.code} is 0. Attainment set to None."
-                )  # DEBUG
-
-        # Create or update CO Attainment record
-        co_attainment, created = CourseOutcomeAttainment.objects.update_or_create(
+        # THIS IS THE FIX: Pass the academic_year_obj when creating the record
+        CourseOutcomeAttainment.objects.update_or_create(
             course_outcome=co,
             academic_year=academic_year_obj,
-            defaults={"attainment_percentage": attainment_percentage},
+            defaults={'attainment_percentage': attainment_percentage}
         )
-        print(
-            f"  CO Attainment record for {co.code} saved: {co_attainment.attainment_percentage}% (Created: {created})"
-        )  # DEBUG
-
-    print(
-        f"\n--- Finished CO Attainment Calculation for Course: {course_obj.code} ---"
-    )  # DEBUG
     return True
 
 
-def calculate_po_attainment_for_academic_year(academic_year_obj):
-    print(
-        f"\n--- Starting PO Attainment Calculation for Year: {academic_year_obj} ---"
-    )  # DEBUG
-    # ... (rest of function as is, or add similar prints)
-    program_outcomes = ProgramOutcome.objects.all()
+# UPDATE a single line in this function signature
+def calculate_po_attainment_for_department(department_obj, academic_year_obj):
+    """
+    Calculates the attainment for each Program Outcome (PO) of a given department
+    for a specific academic year.
+    """
+    program_outcomes = ProgramOutcome.objects.filter(department=department_obj)
 
     for po in program_outcomes:
-        print(f"\n  Processing Program Outcome: {po.code}")  # DEBUG
         total_weighted_attainment = 0
         total_weight = 0
 
-        # Get all relevant CO-PO mappings for COs associated with this academic year
-        relevant_mappings = COPOMapping.objects.filter(
-            program_outcome=po, course_outcome__course__academic_year=academic_year_obj
-        ).select_related("course_outcome")
+        # Find all COs in this department that are mapped to this PO
+        mappings = COPOMapping.objects.filter(
+            program_outcome=po,
+            course_outcome__course__department=department_obj,
+            course_outcome__attainments__academic_year=academic_year_obj # Filter by year
+        ).select_related('course_outcome__attainments')
 
-        print(
-            f"    Number of relevant CO-PO mappings for PO {po.code}: {relevant_mappings.count()}"
-        )  # DEBUG
-
-        if not relevant_mappings.exists():
-            po_attainment_percentage = None
-            print(
-                f"    No relevant mappings found for PO {po.code}. Attainment set to None."
-            )  # DEBUG
-        else:
-            for mapping in relevant_mappings:
-                print(
-                    f"      - Processing mapping: {mapping.course_outcome.code} -> {mapping.program_outcome.code}"
-                )  # DEBUG
-                co_attainment_obj = CourseOutcomeAttainment.objects.filter(
-                    course_outcome=mapping.course_outcome,
-                    academic_year=academic_year_obj,
-                ).first()
-
-                if (
-                    co_attainment_obj
-                    and co_attainment_obj.attainment_percentage is not None
-                ):
-                    print(
-                        f"        Found CO Attainment for {mapping.course_outcome.code}: {co_attainment_obj.attainment_percentage}% (Weight: {mapping.correlation_level})"
-                    )  # DEBUG
+        for mapping in mappings:
+            try:
+                # Get the attainment for the specific academic year
+                attainment = mapping.course_outcome.attainments.get(academic_year=academic_year_obj)
+                if attainment.attainment_percentage is not None:
                     weight = mapping.correlation_level
-                    total_weighted_attainment += (
-                        co_attainment_obj.attainment_percentage * weight
-                    )
+                    total_weighted_attainment += (attainment.attainment_percentage * weight)
                     total_weight += weight
-                else:
-                    print(
-                        f"        No valid CO Attainment found for {mapping.course_outcome.code}."
-                    )  # DEBUG
+            except CourseOutcomeAttainment.DoesNotExist:
+                continue
 
-            print(
-                f"    Final Totals for PO {po.code}: Weighted={total_weighted_attainment}, Total Weight={total_weight}"
-            )  # DEBUG
+        if total_weight > 0:
+            attainment_percentage = total_weighted_attainment / total_weight
+        else:
+            attainment_percentage = 0
 
-            if total_weight > 0:
-                po_attainment_percentage = total_weighted_attainment / total_weight
-                po_attainment_percentage = round(po_attainment_percentage, 2)
-                print(
-                    f"    Calculated Attainment % for PO {po.code}: {po_attainment_percentage}"
-                )  # DEBUG
-            else:
-                po_attainment_percentage = None
-                print(
-                    f"    Total weight for PO {po.code} is 0. Attainment set to None."
-                )  # DEBUG
-
-        # Create or update PO Attainment record
-        po_attainment, created = ProgramOutcomeAttainment.objects.update_or_create(
+        # THIS IS THE FIX: Pass the academic_year_obj when creating the record
+        ProgramOutcomeAttainment.objects.update_or_create(
             program_outcome=po,
             academic_year=academic_year_obj,
-            defaults={"attainment_percentage": po_attainment_percentage},
+            defaults={'attainment_percentage': attainment_percentage}
         )
-        print(
-            f"  PO Attainment record for {po.code} saved: {po_attainment.attainment_percentage}% (Created: {created})"
-        )  # DEBUG
-
-    print(
-        f"\n--- Finished PO Attainment Calculation for Year: {academic_year_obj} ---"
-    )  # DEBUG
     return True
 
 
-# --- Views to Trigger Calculation ---
-
-
+# UPDATE the calls to the helper functions in this main view
 @login_required
-@user_passes_test(
-    is_admin_or_hod, login_url="/accounts/login/"
-)  # Only Admin/HOD can trigger
+@user_passes_test(is_admin_or_hod)
 def calculate_attainment_view(request):
-    academic_years = AcademicYear.objects.all().order_by("-start_date")
-    courses = Course.objects.all().order_by("code")
+    if is_hod(request.user):
+        departments = Department.objects.filter(pk=request.user.profile.department.pk)
+        courses = Course.objects.filter(department__in=departments)
+        academic_years = AcademicYear.objects.all() # HODs should be able to select any year
+    else: # Admin
+        departments = Department.objects.all()
+        courses = Course.objects.all()
+        academic_years = AcademicYear.objects.all()
 
     if request.method == "POST":
         calc_type = request.POST.get("calc_type")
-
-        # Get IDs from the CO calculation section's fields (new names)
-        co_academic_year_id = request.POST.get("co_academic_year")
-        co_course_id = request.POST.get("co_course")
-
-        # Get ID from the PO calculation section's field (new name)
-        po_academic_year_id = request.POST.get(
-            "po_academic_year"
-        )  # NEW: Changed to 'po_academic_year'
-
-        # Initialize academic year objects based on which button was clicked
-        academic_year_obj_for_co = None
-        if co_academic_year_id:
-            academic_year_obj_for_co = get_object_or_404(
-                AcademicYear, pk=co_academic_year_id
-            )
-
-        academic_year_obj_for_po = None
-        if po_academic_year_id:
-            academic_year_obj_for_po = get_object_or_404(
-                AcademicYear, pk=po_academic_year_id
-            )
-
-        if calc_type == "co_by_course":  # No need for 'and course_id' here, check below
-            # Check if both Academic Year and Course are selected for CO calculation
-            if (
-                not academic_year_obj_for_co or not co_course_id
-            ):  # Check for the course ID here too
-                messages.error(
-                    request,
-                    "Please select both an Academic Year and a Course to calculate CO attainment.",
-                )
+        
+        if calc_type == "co_by_course":
+            course_id = request.POST.get("co_course")
+            academic_year_id = request.POST.get("co_academic_year")
+            if course_id and academic_year_id:
+                course_obj = get_object_or_404(Course, pk=course_id)
+                academic_year_obj = get_object_or_404(AcademicYear, pk=academic_year_id)
+                # Pass both objects to the function
+                calculate_co_attainment_for_course(course_obj, academic_year_obj)
+                messages.success(request, f"CO Attainment calculated for {course_obj.code} in {academic_year_obj}!")
             else:
-                course_obj = get_object_or_404(Course, pk=co_course_id)
-                with transaction.atomic():
-                    success = calculate_co_attainment_for_course(
-                        course_obj, academic_year_obj_for_co
-                    )
-                if success:
-                    messages.success(
-                        request,
-                        f"CO Attainment calculated for Course {course_obj.code} in {academic_year_obj_for_co}!",
-                    )
-                else:
-                    messages.error(
-                        request, "Failed to calculate CO Attainment. Check logs."
-                    )
+                messages.error(request, "Please select both a Course and an Academic Year.")
 
-        elif calc_type == "po_by_year":
-            # Check if Academic Year is selected for PO calculation
-            if not academic_year_obj_for_po:
-                messages.error(
-                    request,
-                    "Please select an Academic Year to calculate PO attainment by Year.",
-                )
+        elif calc_type == "po_by_department":
+            department_id = request.POST.get("po_department")
+            academic_year_id = request.POST.get("po_academic_year")
+            if department_id and academic_year_id:
+                department_obj = get_object_or_404(Department, pk=department_id)
+                academic_year_obj = get_object_or_404(AcademicYear, pk=academic_year_id)
+                # Pass both objects to the function
+                calculate_po_attainment_for_department(department_obj, academic_year_obj)
+                messages.success(request, f"PO Attainment calculated for {department_obj.name} in {academic_year_obj}!")
             else:
-                with transaction.atomic():
-                    success = calculate_po_attainment_for_academic_year(
-                        academic_year_obj_for_po
-                    )
-                if success:
-                    messages.success(
-                        request,
-                        f"PO Attainment calculated for Academic Year {academic_year_obj_for_po}!",
-                    )
-                else:
-                    messages.error(
-                        request, "Failed to calculate PO Attainment. Check logs."
-                    )
-        else:
-            messages.error(request, "Invalid calculation type or missing selections.")
-
-        return redirect("calculate_attainment_view")  # Redirect back to the form
+                 messages.error(request, "Please select both a Department and an Academic Year.")
+        
+        return redirect("calculate_attainment_view")
 
     context = {
-        "academic_years": academic_years,
-        "courses": courses,
+        "courses": courses.order_by("code"),
+        "departments": departments.order_by('name'),
+        "academic_years": academic_years.order_by("-start_date"),
+        "form_title": "Calculate Attainment"
     }
     return render(request, "academics/calculate_attainment_form.html", context)
 
@@ -1802,45 +1649,44 @@ def calculate_attainment_view(request):
 @login_required
 @user_passes_test(is_admin_or_hod_or_faculty, login_url="/accounts/login/")
 def co_attainment_report_list(request):
-    academic_years = AcademicYear.objects.all().order_by("-start_date")
-    courses = Course.objects.all().order_by("code")
+    user_profile = request.user.profile
+    
+    # --- START: Logic to scope the filter dropdowns ---
+    if is_admin(user_profile.user):
+        courses_for_filter = Course.objects.all().order_by("code")
+    elif is_hod(user_profile.user):
+        hod_department = user_profile.department
+        courses_for_filter = Course.objects.filter(department=hod_department).order_by("code")
+    else: # is_faculty
+        courses_for_filter = user_profile.taught_courses.all().order_by("code")
+    
+    academic_years_for_filter = AcademicYear.objects.all().order_by("-start_date")
+    # --- END: Logic to scope the filter dropdowns ---
 
+    # Get the base queryset for attainments
+    co_attainments = CourseOutcomeAttainment.objects.all()
+
+    # Filter based on user's role
+    if is_hod(user_profile.user):
+        co_attainments = co_attainments.filter(course_outcome__course__department=user_profile.department)
+    elif is_faculty(user_profile.user):
+        co_attainments = co_attainments.filter(course_outcome__course__in=user_profile.taught_courses.all())
+
+    # Apply filters from GET parameters
     selected_academic_year_id = request.GET.get("academic_year")
     selected_course_id = request.GET.get("course")
 
-    co_attainments = CourseOutcomeAttainment.objects.all()
-
-    # Filter based on user role
-    if is_faculty(request.user) and not is_admin_or_hod(request.user):
-        user_profile = request.user.profile
-        taught_courses = user_profile.taught_courses.all()
-        co_attainments = co_attainments.filter(
-            course_outcome__course__in=taught_courses
-        )
-
-    # Apply filters from GET parameters
     if selected_academic_year_id:
-        co_attainments = co_attainments.filter(
-            academic_year__id=selected_academic_year_id
-        )
+        co_attainments = co_attainments.filter(academic_year_id=selected_academic_year_id)
     if selected_course_id:
-        co_attainments = co_attainments.filter(
-            course_outcome__course__id=selected_course_id
-        )
-
-    # Optimize query with select_related and prefetch_related
-    co_attainments = co_attainments.select_related(
-        "course_outcome__course", "course_outcome__course__department", "academic_year"
-    ).order_by(
-        "-academic_year__start_date",
-        "course_outcome__course__code",
-        "course_outcome__code",
-    )
+        co_attainments = co_attainments.filter(course_outcome__course_id=selected_course_id)
 
     context = {
-        "co_attainments": co_attainments,
-        "academic_years": academic_years,
-        "courses": courses,
+        "co_attainments": co_attainments.select_related(
+            "course_outcome__course", "course_outcome__course__department", "academic_year"
+        ).order_by("-academic_year__start_date", "course_outcome__course__code", "course_outcome__code"),
+        "academic_years": academic_years_for_filter,
+        "courses": courses_for_filter,
         "selected_academic_year_id": selected_academic_year_id,
         "selected_course_id": selected_course_id,
         "form_title": "Course Outcome Attainment Report",
@@ -2116,6 +1962,7 @@ def assignment_create(request):
             assignment = form.save(commit=False)
             assignment.created_by = request.user.profile
             assignment.save()
+            form.save_m2m()
             messages.success(request, f"Assignment '{assignment.title}' created successfully.")
             return redirect('assignment_list')
     else:
@@ -2135,6 +1982,7 @@ def assignment_update(request, pk):
         form = AssignmentForm(request.POST, instance=assignment, user=request.user)
         if form.is_valid():
             form.save()
+            form.save_m2m()
             messages.success(request, f"Assignment '{assignment.title}' updated successfully.")
             return redirect('assignment_list')
     else:
@@ -2558,3 +2406,24 @@ def bulk_enrollment_view(request):
         'form_title': "Bulk Enroll Students in a Course"
     }
     return render(request, 'academics/bulk_enrollment_form.html', context)
+
+
+@login_required
+def get_course_outcomes_api(request, course_id):
+    """
+    An API endpoint to fetch course outcomes for a given course ID.
+    Returns data as JSON.
+    """
+    try:
+        course = get_object_or_404(Course, pk=course_id)
+        
+        # Security Check: Ensure the user has permission to access this course's COs
+        user_profile = request.user.profile
+        if not (is_admin(request.user) or is_hod(request.user) or course in user_profile.taught_courses.all()):
+            return JsonResponse({'error': 'Permission denied'}, status=403)
+
+        outcomes = CourseOutcome.objects.filter(course=course).values('id', 'code', 'description')
+        return JsonResponse(list(outcomes), safe=False)
+        
+    except Course.DoesNotExist:
+        return JsonResponse({'error': 'Course not found'}, status=404)

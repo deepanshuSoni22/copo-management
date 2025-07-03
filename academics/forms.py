@@ -890,9 +890,17 @@ class AssignmentForm(forms.ModelForm):
         label="Due Date"
     )
 
+     # --- ADD THE NEW FIELD DEFINITION HERE ---
+    assesses_cos = forms.ModelMultipleChoiceField(
+        queryset=CourseOutcome.objects.none(), # Initially empty, populated by __init__
+        widget=forms.CheckboxSelectMultiple,
+        required=False,
+        label="Assesses Course Outcomes"
+    )
+
     class Meta:
         model = Assignment
-        fields = ['title', 'description', 'course', 'assignment_type', 'due_date', 'rubric', 'cia_component']
+        fields = ['title', 'description', 'course', 'assignment_type', 'max_marks', 'due_date', 'rubric', 'cia_component', 'assesses_cos']
         # Apply standard styling to all widgets
         widgets = {
             'title': forms.TextInput(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm'}),
@@ -901,6 +909,7 @@ class AssignmentForm(forms.ModelForm):
             'assignment_type': forms.Select(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm', 'id': 'id_assignment_type'}),
             'rubric': forms.Select(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm'}),
             'cia_component': forms.Select(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm'}),
+            'max_marks': forms.NumberInput(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm'}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -909,11 +918,21 @@ class AssignmentForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
 
         if user and hasattr(user, 'profile'):
-            # Filter the 'course' dropdown to only show courses taught by this faculty member
-            self.fields['course'].queryset = Course.objects.filter(faculty=user.profile)
-            # Filter the 'rubric' dropdown to only show rubrics created by this faculty member
+            taught_courses = Course.objects.filter(faculty=user.profile)
+            self.fields['course'].queryset = taught_courses
             self.fields['rubric'].queryset = Rubric.objects.filter(created_by=user.profile)
-        
+
+            self.fields['cia_component'].queryset = CIAComponent.objects.filter(course_plan__course__in=taught_courses)
+
+         # --- ADD LOGIC TO FILTER THE CO CHECKLIST ---
+        # If we are editing an existing assignment, the course is already set.
+        if self.instance and self.instance.pk:
+            self.fields['assesses_cos'].queryset = CourseOutcome.objects.filter(course=self.instance.course).order_by('code')
+        else:
+            self.fields['assesses_cos'].queryset = CourseOutcome.objects.none()
+        # This part requires JavaScript on the frontend to update the checklist
+        # when the user changes the "Course" dropdown on the create page.
+
         # Make rubric and cia_component not required by default
         self.fields['rubric'].required = False
         self.fields['cia_component'].required = False

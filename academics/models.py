@@ -627,6 +627,22 @@ class Assignment(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    # ADD A FIELD FOR MAXIMUM MARKS
+    max_marks = models.DecimalField(
+        max_digits=6,
+        decimal_places=0,
+        default=0,
+        help_text="The maximum marks for this assignment."
+    )
+
+    # ADD A MANY-TO-MANY FIELD TO LINK TO COURSE OUTCOMES
+    assesses_cos = models.ManyToManyField(
+        CourseOutcome,
+        blank=True,
+        related_name="assessed_by_assignments",
+        help_text="Select the Course Outcomes that this assignment assesses."
+    )
+
     def __str__(self):
         return f"{self.title} - {self.course.code}"
     
