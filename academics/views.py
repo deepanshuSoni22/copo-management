@@ -1560,6 +1560,7 @@ def calculate_po_attainment_for_department(department_obj, academic_year_obj):
     program_outcomes = ProgramOutcome.objects.filter(department=department_obj)
 
     for po in program_outcomes:
+        print(f"[DEBUG] Processing PO: {po.code}")
         total_weighted_attainment = 0
         total_weight = 0
 
@@ -1568,23 +1569,33 @@ def calculate_po_attainment_for_department(department_obj, academic_year_obj):
             program_outcome=po,
             course_outcome__course__department=department_obj,
             course_outcome__attainments__academic_year=academic_year_obj # Filter by year
-        ).select_related('course_outcome__attainments')
+        ).prefetch_related('course_outcome__attainments')
+
+        print(f"[DEBUG] Total COPOMappings found for PO {po.code}: {mappings.count()}")
 
         for mapping in mappings:
+            print(f"[DEBUG] Attempting to get attainment for CO: {mapping.course_outcome.code}")
             try:
                 # Get the attainment for the specific academic year
-                attainment = mapping.course_outcome.attainments.get(academic_year=academic_year_obj)
+                attainment_qs = mapping.course_outcome.attainments.filter(academic_year=academic_year_obj)
+                if attainment_qs.exists():
+                    attainment = attainment_qs.first()
+                    print(f"[DEBUG] Attainment found: {attainment.attainment_percentage}%")
                 if attainment.attainment_percentage is not None:
                     weight = mapping.correlation_level
                     total_weighted_attainment += (attainment.attainment_percentage * weight)
                     total_weight += weight
+                else:
+                    print(f"[DEBUG] Skipping: attainment percentage is None for CO {mapping.course_outcome.code}")
             except CourseOutcomeAttainment.DoesNotExist:
                 continue
 
         if total_weight > 0:
+            print(f"[DEBUG] Final PO attainment % for {po.code}: {attainment_percentage:.2f}%")
             attainment_percentage = total_weighted_attainment / total_weight
         else:
             attainment_percentage = 0
+            print(f"[DEBUG] No valid mappings with attainment. PO attainment for {po.code} set to 0.00%")
 
         # THIS IS THE FIX: Pass the academic_year_obj when creating the record
         ProgramOutcomeAttainment.objects.update_or_create(
@@ -1609,7 +1620,9 @@ def calculate_attainment_view(request):
         academic_years = AcademicYear.objects.all()
 
     if request.method == "POST":
+        print("DEBUG - POST data:", request.POST)
         calc_type = request.POST.get("calc_type")
+        print("DEBUG - calc_type:", calc_type)
         
         if calc_type == "co_by_course":
             course_id = request.POST.get("co_course")

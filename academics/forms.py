@@ -987,7 +987,7 @@ class GradingForm(forms.ModelForm):
         model = Submission
         fields = ['marks_obtained', 'feedback']
         widgets = {
-            'marks_obtained': forms.NumberInput(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base'}),
+            'marks_obtained': forms.NumberInput(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base', 'step':0, 'min':0}),
             'feedback': forms.Textarea(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base', 'rows': 4}),
         }
         labels = {

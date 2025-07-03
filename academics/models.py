@@ -658,7 +658,7 @@ class Submission(models.Model):
     submitted_at = models.DateTimeField(auto_now_add=True)
     file = models.FileField(upload_to='%Y/%m/%d/', blank=True, null=True)
     
-    marks_obtained = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True)
+    marks_obtained = models.DecimalField(max_digits=5, decimal_places=0, blank=True, null=True)
     feedback = models.TextField(blank=True, null=True)
     graded_at = models.DateTimeField(blank=True, null=True)
     graded_by = models.ForeignKey('users.UserProfile', on_delete=models.SET_NULL, blank=True, null=True, related_name='graded_submissions')
