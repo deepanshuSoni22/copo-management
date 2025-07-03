@@ -727,7 +727,7 @@ class CourseObjectiveForm(forms.ModelForm):
             'unit_number': forms.TextInput(attrs={'class': 'mt-1 block w-24 px-2 py-1 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base'}),
             'objective_text': forms.Textarea(attrs={
                 'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base', 
-                'rows': 4}),
+                'rows': 6}),
         }
 
 # Formset for Course Objectives
@@ -747,13 +747,13 @@ class WeeklyLessonPlanForm(forms.ModelForm):
         widgets = {
             'order': forms.NumberInput(attrs={'class': 'mt-1 block w-16 px-2 py-1 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm'}),
             'unit_number': forms.TextInput(attrs={'class': 'mt-1 block w-24 px-2 py-1 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm'}),
-            'unit_details': forms.Textarea(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base', 'rows': 4}),
+            'unit_details': forms.Textarea(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base', 'rows': 6}),
 
             'start_date': forms.DateInput(attrs={'type': 'date', 'class': 'mt-1 block w-full px-2 py-1 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base'}),
             'end_date': forms.DateInput(attrs={'type': 'date', 'class': 'mt-1 block w-full px-2 py-1 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base'}),
 
-            'pedagogy': forms.Textarea(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base', 'rows': 4}),
-            'references': forms.Textarea(attrs={'class': 'mt-1 block w-full px-4 py- border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base', 'rows': 4}),
+            'pedagogy': forms.Textarea(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base', 'rows': 6}),
+            'references': forms.Textarea(attrs={'class': 'mt-1 block w-full px-4 py- border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base', 'rows': 6}),
         }
 
 # Formset for Weekly Lesson Plans
@@ -787,12 +787,13 @@ class CIAComponentForm(forms.ModelForm):
 
     class Meta:
         model = CIAComponent
-        fields = ['order', 'component_name', 'units_covered', 'cos_covered']
+        fields = ['order', 'component_name', 'units_covered', 'cos_covered' ,'evaluation_rubric']
         widgets = {
             'order': forms.NumberInput(attrs={'class': 'mt-1 block w-16 px-2 py-1 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base'}),
             'component_name': forms.TextInput(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base'}),
             'units_covered': forms.TextInput(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base', 'placeholder': 'e.g., UNIT 1 & 2'}),
             'cos_covered': forms.CheckboxSelectMultiple(attrs={'class': 'mt-1 block'}),
+            'evaluation_rubric': forms.Textarea(attrs={'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base', 'rows': 6, 'placeholder': 'e.g., Content: Poor (0-1), Fair (2-3), Excellent (4-5)'}),
         }
 
 # Formset for CIA Components
@@ -802,7 +803,7 @@ CIAComponentFormSet = inlineformset_factory(
     form=CIAComponentForm,
     extra=0,        # One empty form by default
     can_delete=True, # Allow deleting components
-    fields=['order', 'component_name', 'units_covered', 'cos_covered']
+    fields=['order', 'component_name', 'units_covered', 'cos_covered', 'evaluation_rubric']
 )
 
 

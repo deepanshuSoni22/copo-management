@@ -548,6 +548,12 @@ class CIAComponent(models.Model):
         related_name='cia_assessed_by'
     )
     order = models.PositiveIntegerField(default=0, help_text="Order of the CIA component.")
+    # --- ADD THIS NEW FIELD ---
+    evaluation_rubric = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Descriptive rubric for this component (e.g., criteria for Content, Neatness)."
+    )
 
     def __str__(self):
         return f"CIA: {self.component_name} for {self.course_plan.course.code}"
