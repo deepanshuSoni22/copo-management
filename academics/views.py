@@ -1610,19 +1610,18 @@ def calculate_po_attainment_for_department(department_obj, academic_year_obj):
 @login_required
 @user_passes_test(is_admin_or_hod)
 def calculate_attainment_view(request):
+    # Scope the dropdowns based on the user's role
     if is_hod(request.user):
         departments = Department.objects.filter(pk=request.user.profile.department.pk)
         courses = Course.objects.filter(department__in=departments)
-        academic_years = AcademicYear.objects.all() # HODs should be able to select any year
     else: # Admin
         departments = Department.objects.all()
         courses = Course.objects.all()
-        academic_years = AcademicYear.objects.all()
+    
+    academic_years = AcademicYear.objects.all().order_by("-start_date")
 
     if request.method == "POST":
-        print("DEBUG - POST data:", request.POST)
         calc_type = request.POST.get("calc_type")
-        print("DEBUG - calc_type:", calc_type)
         
         if calc_type == "co_by_course":
             course_id = request.POST.get("co_course")
@@ -1630,7 +1629,6 @@ def calculate_attainment_view(request):
             if course_id and academic_year_id:
                 course_obj = get_object_or_404(Course, pk=course_id)
                 academic_year_obj = get_object_or_404(AcademicYear, pk=academic_year_id)
-                # Pass both objects to the function
                 calculate_co_attainment_for_course(course_obj, academic_year_obj)
                 messages.success(request, f"CO Attainment calculated for {course_obj.code} in {academic_year_obj}!")
             else:
@@ -1642,7 +1640,6 @@ def calculate_attainment_view(request):
             if department_id and academic_year_id:
                 department_obj = get_object_or_404(Department, pk=department_id)
                 academic_year_obj = get_object_or_404(AcademicYear, pk=academic_year_id)
-                # Pass both objects to the function
                 calculate_po_attainment_for_department(department_obj, academic_year_obj)
                 messages.success(request, f"PO Attainment calculated for {department_obj.name} in {academic_year_obj}!")
             else:
@@ -1653,7 +1650,7 @@ def calculate_attainment_view(request):
     context = {
         "courses": courses.order_by("code"),
         "departments": departments.order_by('name'),
-        "academic_years": academic_years.order_by("-start_date"),
+        "academic_years": academic_years,
         "form_title": "Calculate Attainment"
     }
     return render(request, "academics/calculate_attainment_form.html", context)
@@ -1664,35 +1661,44 @@ def calculate_attainment_view(request):
 def co_attainment_report_list(request):
     user_profile = request.user.profile
     
-    # --- START: Logic to scope the filter dropdowns ---
+    # --- Logic to scope the filter dropdowns based on user role ---
+    # Base querysets
+    co_attainments = CourseOutcomeAttainment.objects.all()
+    academic_years_for_filter = AcademicYear.objects.all().order_by("-start_date")
+    
+    # Role-specific filtering
     if is_admin(user_profile.user):
+        departments_for_filter = Department.objects.all().order_by("name")
         courses_for_filter = Course.objects.all().order_by("code")
     elif is_hod(user_profile.user):
         hod_department = user_profile.department
+        departments_for_filter = Department.objects.filter(pk=hod_department.pk)
         courses_for_filter = Course.objects.filter(department=hod_department).order_by("code")
+        co_attainments = co_attainments.filter(course_outcome__course__department=hod_department)
     else: # is_faculty
         courses_for_filter = user_profile.taught_courses.all().order_by("code")
-    
-    academic_years_for_filter = AcademicYear.objects.all().order_by("-start_date")
-    # --- END: Logic to scope the filter dropdowns ---
-
-    # Get the base queryset for attainments
-    co_attainments = CourseOutcomeAttainment.objects.all()
-
-    # Filter based on user's role
-    if is_hod(user_profile.user):
-        co_attainments = co_attainments.filter(course_outcome__course__department=user_profile.department)
-    elif is_faculty(user_profile.user):
+        departments_for_filter = Department.objects.none()
         co_attainments = co_attainments.filter(course_outcome__course__in=user_profile.taught_courses.all())
 
     # Apply filters from GET parameters
     selected_academic_year_id = request.GET.get("academic_year")
+    selected_department_id = request.GET.get("department")
     selected_course_id = request.GET.get("course")
+
+    # Filter CO attainment base queryset
+    if selected_department_id:
+        courses_for_filter = Course.objects.filter(department_id=selected_department_id).order_by("code")
+    else:
+        if is_admin(user_profile.user):
+            courses_for_filter = Course.objects.all().order_by("code")
 
     if selected_academic_year_id:
         co_attainments = co_attainments.filter(academic_year_id=selected_academic_year_id)
+
     if selected_course_id:
         co_attainments = co_attainments.filter(course_outcome__course_id=selected_course_id)
+    elif selected_department_id:
+        co_attainments = co_attainments.filter(course_outcome__course__department_id=selected_department_id)
 
     context = {
         "co_attainments": co_attainments.select_related(
@@ -1700,8 +1706,10 @@ def co_attainment_report_list(request):
         ).order_by("-academic_year__start_date", "course_outcome__course__code", "course_outcome__code"),
         "academic_years": academic_years_for_filter,
         "courses": courses_for_filter,
+        "departments": departments_for_filter,
         "selected_academic_year_id": selected_academic_year_id,
         "selected_course_id": selected_course_id,
+        "selected_department_id": selected_department_id,
         "form_title": "Course Outcome Attainment Report",
     }
     return render(request, "academics/co_attainment_report_list.html", context)
@@ -1725,6 +1733,9 @@ def po_attainment_report_list(request):
         departments_for_filter = departments_for_filter.filter(pk=hod_department.pk)
     # --- END: Role-based filtering ---
 
+    is_hod_user = is_hod(user_profile.user)
+
+
     # Apply filters from GET parameters
     selected_academic_year_id = request.GET.get("academic_year")
     selected_department_id = request.GET.get("department")
@@ -1742,6 +1753,7 @@ def po_attainment_report_list(request):
         "departments": departments_for_filter, # Add departments for the filter
         "selected_academic_year_id": selected_academic_year_id,
         "selected_department_id": selected_department_id, # Pass to template
+        "is_hod": is_hod_user,
         "form_title": "Program Outcome Attainment Report",
     }
     return render(request, "academics/po_attainment_report_list.html", context)
@@ -2458,3 +2470,18 @@ def get_course_outcomes_api(request, course_id):
         
     except Course.DoesNotExist:
         return JsonResponse({'error': 'Course not found.'}, status=404)
+
+# --- ADD THIS NEW VIEW FOR DYNAMIC DROPDOWNS ---
+@login_required
+@user_passes_test(is_admin) # Only admins need this API
+def get_courses_by_department_api(request, department_id):
+    """
+    An API endpoint to fetch courses for a given department ID.
+    """
+    try:
+        department = Department.objects.get(pk=department_id)
+        courses = Course.objects.filter(department=department).values('id', 'code', 'name')
+        return JsonResponse(list(courses), safe=False)
+    except Department.DoesNotExist:
+        return JsonResponse({'error': 'Department not found'}, status=404)
+        

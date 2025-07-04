@@ -104,5 +104,6 @@ urlpatterns = [
     path('students/bulk-enroll-page/', views.bulk_enrollment_view, name='bulk_enrollment'),
 
     path('api/get-course-outcomes/<int:course_id>/', views.get_course_outcomes_api, name='get_course_outcomes_api'),
+    path('api/get-courses-by-department/<int:department_id>/', views.get_courses_by_department_api, name='get_courses_by_department_api'),
 ]
 

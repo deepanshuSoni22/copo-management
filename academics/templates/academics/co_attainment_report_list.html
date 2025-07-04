@@ -12,6 +12,7 @@
         <div class="flex flex-col sm:flex-row sm:items-end sm:space-x-4 space-y-4 sm:space-y-0">
             <!-- Academic Year Filter -->
             <div class="w-full sm:w-64">
+                <label for="department_filter" class="block text-sm font-medium text-gray-700 mb-1">Year</label>
                 <select name="academic_year" id="academic_year_filter"
                     class="block w-full px-3 py-2 border border-border-default rounded-md shadow-sm sm:text-sm focus:ring-brand-purple focus:border-brand-purple">
                     <option value="">All Years</option>
@@ -22,9 +23,22 @@
                     {% endfor %}
                 </select>
             </div>
+
+            {% if request.user.profile.role == 'ADMIN' or request.user.is_superuser %}
+            <div class="w-full md:w-auto flex-grow">
+                <label for="department_filter" class="block text-sm font-medium text-gray-700 mb-1">Department</label>
+                <select id="department_filter" name="department" class="block w-full px-3 py-2 border border-border-default rounded-md shadow-sm sm:text-sm focus:ring-brand-purple focus:border-brand-purple">
+                    <option value="">-- Select a Department --</option>
+                    {% for dept in departments %}
+                        <option value="{{ dept.pk }}" {% if selected_department_id|stringformat:"s" == dept.pk|stringformat:"s" %}selected{% endif %}>{{ dept.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
     
             <!-- Course Filter -->
             <div class="w-full sm:w-64">
+                <label for="department_filter" class="block text-sm font-medium text-gray-700 mb-1">Course</label>
                 <select name="course" id="course_filter"
                     class="block w-full px-3 py-2 border border-border-default rounded-md shadow-sm sm:text-sm focus:ring-brand-purple focus:border-brand-purple">
                     <option value="">All Courses</option>
@@ -139,4 +153,36 @@
         }
     });
 </script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const deptFilter = document.getElementById('department_filter');
+        const courseFilter = document.getElementById('course_filter');
+    
+        if (deptFilter) { // This script only runs if the department filter exists
+            deptFilter.addEventListener('change', function() {
+                const departmentId = this.value;
+                courseFilter.innerHTML = '<option value="">Loading...</option>';
+    
+                if (!departmentId) {
+                    // If "Select Department" is chosen, repopulate with all courses
+                    // Or handle as needed. Here, we just clear it.
+                    courseFilter.innerHTML = '<option value="">-- Select a Course --</option>';
+                    return;
+                }
+    
+                fetch(`/academics/api/get-courses-by-department/${departmentId}/`)
+                    .then(response => response.json())
+                    .then(data => {
+                        courseFilter.innerHTML = '<option value="">All Courses</option>';
+                        data.forEach(course => {
+                            const option = document.createElement('option');
+                            option.value = course.id;
+                            option.textContent = `${course.code} - ${course.name}`;
+                            courseFilter.appendChild(option);
+                        });
+                    });
+            });
+        }
+    });
+    </script>
 {% endblock %}
