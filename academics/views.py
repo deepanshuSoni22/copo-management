@@ -1563,6 +1563,8 @@ def calculate_po_attainment_for_department(department_obj, academic_year_obj):
         print(f"[DEBUG] Processing PO: {po.code}")
         total_weighted_attainment = 0
         total_weight = 0
+        # Initialize attainment_percentage for each PO to avoid UnboundLocalError
+        attainment_percentage = 0  # Default value in case no valid calculations occur
 
         # Find all COs in this department that are mapped to this PO
         mappings = COPOMapping.objects.filter(
@@ -1581,18 +1583,18 @@ def calculate_po_attainment_for_department(department_obj, academic_year_obj):
                 if attainment_qs.exists():
                     attainment = attainment_qs.first()
                     print(f"[DEBUG] Attainment found: {attainment.attainment_percentage}%")
-                if attainment.attainment_percentage is not None:
-                    weight = mapping.correlation_level
-                    total_weighted_attainment += (attainment.attainment_percentage * weight)
-                    total_weight += weight
-                else:
-                    print(f"[DEBUG] Skipping: attainment percentage is None for CO {mapping.course_outcome.code}")
+                    if attainment.attainment_percentage is not None:
+                        weight = mapping.correlation_level
+                        total_weighted_attainment += (attainment.attainment_percentage * weight)
+                        total_weight += weight
+                    else:
+                        print(f"[DEBUG] Skipping: attainment percentage is None for CO {mapping.course_outcome.code}")
             except CourseOutcomeAttainment.DoesNotExist:
                 continue
 
         if total_weight > 0:
-            print(f"[DEBUG] Final PO attainment % for {po.code}: {attainment_percentage:.2f}%")
-            attainment_percentage = total_weighted_attainment / total_weight
+            attainment_percentage = total_weighted_attainment / total_weight # Calculate first
+            print(f"[DEBUG] Final PO attainment % for {po.code}: {attainment_percentage:.2f}%") # Then print
         else:
             attainment_percentage = 0
             print(f"[DEBUG] No valid mappings with attainment. PO attainment for {po.code} set to 0.00%")
