@@ -1,90 +1,179 @@
-{# academics/templates/academics/assessment_form.html #}
 {% extends 'base.html' %}
 
 {% block title %}{{ form_title }}{% endblock %}
 
 {% block content %}
-    <div class="bg-white rounded-lg shadow-md p-6 max-w-2xl mx-auto">
-        <h1 class="text-3xl font-bold text-gray-800 mb-6">{{ form_title }}</h1>
+<div class="bg-white rounded-lg shadow-md p-6 max-w-2xl mx-auto">
+    <h1 class="text-3xl font-bold text-gray-800 mb-6 border-b pb-4">{{ form_title }}</h1>
 
-        <form method="post" class="space-y-6">
-            {% csrf_token %}
+    <form method="post" class="space-y-6">
+        {% csrf_token %}
 
-            {% if form.non_field_errors %}
-                <div class="bg-red-100 text-red-700 border border-red-200 p-3 rounded-md mb-4">
-                    {% for error in form.non_field_errors %}
-                        <p>{{ error }}</p>
+        {% if form.errors %}
+            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                <strong>Please correct the errors below:</strong>
+                <ul class="list-disc pl-5 mt-2">
+                    {% for field in form %}
+                        {% for error in field.errors %}
+                            <li><strong>{{ field.label }}:</strong> {{ error }}</li>
+                        {% endfor %}
                     {% endfor %}
-                </div>
+                    {% for error in form.non_field_errors %}
+                        <li>{{ error }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+
+        <div>
+            <label for="{{ form.name.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">{{ form.name.label }}</label>
+            {{ form.name }}
+            {% if form.name.help_text %}<p class="mt-1 text-xs text-gray-500">{{ form.name.help_text }}</p>{% endif %}
+        </div>
+
+        <div>
+            <label for="{{ form.course.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">{{ form.course.label }}</label>
+            {{ form.course }}
+            {% if form.course.help_text %}<p class="mt-1 text-xs text-gray-500">{{ form.course.help_text }}</p>{% endif %}
+        </div>
+
+        <div>
+            <label for="{{ form.academic_year.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">{{ form.academic_year.label }}</label>
+            {{ form.academic_year }}
+        </div>
+
+        <div>
+            <label for="{{ form.assessment_type.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">{{ form.assessment_type.label }}</label>
+            {{ form.assessment_type }}
+        </div>
+
+        <div>
+            <label for="{{ form.max_marks.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">{{ form.max_marks.label }}</label>
+            {{ form.max_marks }}
+        </div>
+
+        <div>
+            <label for="{{ form.date.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">{{ form.date.label }}</label>
+            {{ form.date }}
+        </div>
+
+        <!-- This is the container that our JavaScript will dynamically update -->
+        <div class="pt-4 border-t">
+            <label class="block text-sm font-medium text-gray-700 mb-1">{{ form.assesses_cos.label }}</label>
+            <div id="assesses-cos-container" class="max-h-48 overflow-y-auto border border-gray-300 rounded-md p-3 space-y-2">
+                <!-- Django will render the initial checkboxes here on page load -->
+                {% for checkbox in form.assesses_cos %}
+                    <label for="{{ checkbox.id_for_label }}" class="flex items-center space-x-3 p-2 border rounded-md cursor-pointer hover:bg-indigo-50">
+                        {{ checkbox.tag }}
+                        <span class="text-sm text-gray-700">{{ checkbox.choice_label }}</span>
+                    </label>
+                {% endfor %}
+            </div>
+            <p class="mt-1 text-xs text-gray-500">{{ form.assesses_cos.help_text }}</p>
+            {% if form.assesses_cos.errors %}
+                <p class="mt-2 text-sm text-red-600">{{ form.assesses_cos.errors.as_text }}</p>
             {% endif %}
+        </div>
 
-            <div>
-                <label for="{{ form.name.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">{{ form.name.label }}</label>
-                {{ form.name }}
-                {% if form.name.errors %}
-                    <p class="mt-2 text-sm text-red-600">{{ form.name.errors.as_text }}</p>
-                {% endif %}
-            </div>
+        <div class="flex items-center space-x-4 pt-5 border-t">
+            <button type="submit"
+                    class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out">
+                Save Assessment
+            </button>
+            <a href="{% url 'assessment_list' %}"
+               class="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out">
+                Cancel
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}
 
-            <div>
-                <label for="{{ form.course.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">{{ form.course.label }}</label>
-                {{ form.course }}
-                {% if form.course.errors %}
-                    <p class="mt-2 text-sm text-red-600">{{ form.course.errors.as_text }}</p>
-                {% endif %}
-            </div>
 
-            <div>
-                <label for="{{ form.academic_year.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">{{ form.academic_year.label }}</label>
-                {{ form.academic_year }}
-                {% if form.academic_year.errors %}
-                    <p class="mt-2 text-sm text-red-600">{{ form.academic_year.errors.as_text }}</p>
-                {% endif %}
-            </div>
+{% block extra_js %}
+{{ block.super }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Get the necessary elements from the DOM
+    const courseSelect = document.getElementById('id_course');
+    const coContainer = document.getElementById('assesses-cos-container');
+    
+    // This variable gets the list of pre-selected CO IDs from the view context.
+    // It will be an empty array '[]' on the create page.
+    const initiallySelectedCOs = {{ selected_co_ids|safe|default:'[]' }};
 
-            <div>
-                <label for="{{ form.assessment_type.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">{{ form.assessment_type.label }}</label>
-                {{ form.assessment_type }}
-                {% if form.assessment_type.errors %}
-                    <p class="mt-2 text-sm text-red-600">{{ form.assessment_type.errors.as_text }}</p>
-                {% endif %}
-            </div>
+    function updateCOs() {
+        const courseId = courseSelect.value;
+        
+        // Clear the container and show a loading message
+        coContainer.innerHTML = '<p class="text-gray-500 text-sm p-2">Loading course outcomes...</p>';
 
-            <div>
-                <label for="{{ form.max_marks.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">{{ form.max_marks.label }}</label>
-                {{ form.max_marks }}
-                {% if form.max_marks.errors %}
-                    <p class="mt-2 text-sm text-red-600">{{ form.max_marks.errors.as_text }}</p>
-                {% endif %}
-            </div>
+        if (!courseId) {
+            coContainer.innerHTML = '<p class="text-gray-500 text-sm p-2">Please select a course to see its outcomes.</p>';
+            return;
+        }
 
-            <div>
-                <label for="{{ form.date.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">{{ form.date.label }}</label>
-                {{ form.date }}
-                {% if form.date.errors %}
-                    <p class="mt-2 text-sm text-red-600">{{ form.date.errors.as_text }}</p>
-                {% endif %}
-            </div>
+        // Fetch the new course outcomes from our API endpoint
+        fetch(`/academics/api/get-course-outcomes/${courseId}/`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Clear the loading message
+                coContainer.innerHTML = ''; 
 
-            <div>
-                <label for="{{ form.assesses_cos.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">{{ form.assesses_cos.label }}</label>
-                {{ form.assesses_cos }}
-                <p class="mt-1 text-xs text-gray-500">{{ form.assesses_cos.help_text }}</p>
-                {% if form.assesses_cos.errors %}
-                    <p class="mt-2 text-sm text-red-600">{{ form.assesses_cos.errors.as_text }}</p>
-                {% endif %}
-            </div>
+                if (data.error) {
+                    coContainer.innerHTML = `<p class="text-red-500 text-sm p-2">${data.error}</p>`;
+                    return;
+                }
+                if (data.length === 0) {
+                    coContainer.innerHTML = '<p class="text-gray-500 text-sm p-2">No course outcomes found for the selected course.</p>';
+                    return;
+                }
+                
+                // Dynamically create and add a new checkbox for each outcome
+                data.forEach(co => {
+                    const wrapper = document.createElement('label');
+                    wrapper.className = 'flex items-center space-x-3 p-2 border rounded-md cursor-pointer hover:bg-indigo-50';
+                    
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.name = 'assesses_cos'; // This name MUST match the form field name
+                    checkbox.value = co.id;
+                    checkbox.id = `id_assesses_cos_${co.id}`;
+                    
+                    // If this CO was initially selected (on the update page), check the box
+                    if (initiallySelectedCOs.includes(co.id)) {
+                        checkbox.checked = true;
+                    }
 
-            <div class="flex items-center space-x-4">
-                <button type="submit"
-                        class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out">
-                    Save Assessment
-                </button>
-                <a href="{% url 'assessment_list' %}"
-                   class="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out">
-                    Cancel
-                </a>
-            </div>
-        </form>
-    </div>
+                    const span = document.createElement('span');
+                    span.className = 'text-sm text-gray-700';
+                    span.textContent = `${co.code}: ${co.description}`;
+                    
+                    wrapper.appendChild(checkbox);
+                    wrapper.appendChild(span);
+                    coContainer.appendChild(wrapper);
+                });
+            })
+            .catch(error => {
+                console.error('Error fetching course outcomes:', error);
+                coContainer.innerHTML = '<p class="text-red-500 text-sm p-2">An error occurred while loading outcomes.</p>';
+            });
+    }
+
+    // Add the event listener to the course dropdown
+    courseSelect.addEventListener('change', updateCOs);
+
+    // On initial page load, if no course is selected, show the placeholder message.
+    // If a course IS selected (on the update page), the initial state is already rendered correctly by Django,
+    // so we don't need to do anything.
+    if (!courseSelect.value) {
+        coContainer.innerHTML = '<p class="text-gray-500 text-sm p-2">Please select a course to see its outcomes.</p>';
+    }
+});
+</script>
 {% endblock %}

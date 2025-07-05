@@ -758,15 +758,25 @@ def course_plan_delete(request, pk):
 @user_passes_test(is_admin_or_hod, login_url="/accounts/login/")
 def program_outcome_list(request):
     program_outcomes = ProgramOutcome.objects.all().select_related('department')
+    departments_for_filter = Department.objects.all().order_by('name')
+
     # If user is an HOD, filter to their department only
     if is_hod(request.user):
         program_outcomes = program_outcomes.filter(department=request.user.profile.department)
 
-    return render(
-        request,
-        "academics/program_outcome_list.html",
-        {"program_outcomes": program_outcomes.order_by("department__name", "code")},
-    )
+    # --- START: NEW FILTER LOGIC ---
+    selected_department_id = request.GET.get('department')
+    if selected_department_id:
+        program_outcomes = program_outcomes.filter(department_id=selected_department_id)
+    # --- END: NEW FILTER LOGIC ---
+    
+    context = {
+        "program_outcomes": program_outcomes.order_by("department__name", "code"),
+        "departments": departments_for_filter, # For the admin's filter dropdown
+        "selected_department_id": selected_department_id, # To keep the filter selection
+        "form_title": "Program Outcomes"
+    }
+    return render(request, "academics/program_outcome_list.html", context)
 
 
 @login_required
@@ -1280,88 +1290,68 @@ def assessment_create(request):
     if request.method == "POST":
         form = AssessmentForm(request.POST)
         if form.is_valid():
-            # Faculty specific validation: ensure they are assigned to the selected course
+            # Security check for faculty
             if is_faculty(request.user) and not is_admin_or_hod(request.user):
-                if (
-                    form.cleaned_data["course"]
-                    not in request.user.profile.taught_courses.all()
-                ):
-                    messages.error(
-                        request,
-                        "You can only create assessments for courses you are assigned to.",
-                    )
-                    return render(
-                        request,
-                        "academics/assessment_form.html",
-                        {"form": form, "form_title": "Create Assessment"},
-                    )
+                if (form.cleaned_data["course"] not in request.user.profile.taught_courses.all()):
+                    messages.error(request, "You can only create assessments for courses you are assigned to.")
+                    return render(request, "academics/assessment_form.html", {"form": form, "form_title": "Create Assessment"})
 
             assessment = form.save()
-            messages.success(
-                request,
-                f'Assessment "{assessment.name}" for {assessment.course.code} created successfully!',
-            )
+            messages.success(request, f'Assessment "{assessment.name}" for {assessment.course.code} created successfully!')
             return redirect("assessment_list")
         else:
             messages.error(request, "Please correct the errors below.")
     else:
         form = AssessmentForm()
-        # Prefilter course choices for faculty users
+        # Prefilter course dropdown for faculty
         if is_faculty(request.user) and not is_admin_or_hod(request.user):
-            form.fields["course"].queryset = (
-                request.user.profile.taught_courses.all().order_by("code")
-            )
-            # Consider dynamically updating assesses_cos queryset based on initial course selected, if any.
-            # This would require JS on the frontend or passing initial data to the template.
-    return render(
-        request,
-        "academics/assessment_form.html",
-        {"form": form, "form_title": "Create Assessment"},
-    )
+            form.fields["course"].queryset = (request.user.profile.taught_courses.all().order_by("code"))
+    
+    return render(request, "academics/assessment_form.html", {"form": form, "form_title": "Create Assessment"})
 
 
+# ==============================================================================
+# ASSESSMENT UPDATE VIEW (MODIFIED)
+# ==============================================================================
 @login_required
 @user_passes_test(is_admin_or_hod_or_faculty, login_url="/accounts/login/")
 def assessment_update(request, pk):
     assessment = get_object_or_404(Assessment, pk=pk)
 
-    # Permission check: Faculty can only update assessments for courses they teach
+    # Security check for faculty
     if is_faculty(request.user) and not is_admin_or_hod(request.user):
         if assessment.course not in request.user.profile.taught_courses.all():
-            messages.error(
-                request, "You do not have permission to update this Assessment."
-            )
+            messages.error(request, "You do not have permission to update this Assessment.")
             return redirect("assessment_list")
 
     if request.method == "POST":
         form = AssessmentForm(request.POST, instance=assessment)
         if form.is_valid():
             assessment = form.save()
-            messages.success(
-                request,
-                f'Assessment "{assessment.name}" for {assessment.course.code} updated successfully!',
-            )
+            messages.success(request, f'Assessment "{assessment.name}" for {assessment.course.code} updated successfully!')
             return redirect("assessment_list")
         else:
             messages.error(request, "Please correct the errors below.")
     else:
         form = AssessmentForm(instance=assessment)
-        # Prefilter course choices for faculty users
+        # Prefilter course dropdown for faculty
         if is_faculty(request.user) and not is_admin_or_hod(request.user):
-            form.fields["course"].queryset = (
-                request.user.profile.taught_courses.all().order_by("code")
-            )
-        # Filter assesses_cos queryset based on the instance's course
+            form.fields["course"].queryset = (request.user.profile.taught_courses.all().order_by("code"))
+        
+        # Pre-populate the course outcomes for the existing assessment
         if assessment.course:
-            form.fields["assesses_cos"].queryset = (
-                assessment.course.course_outcomes.all().order_by("code")
-            )
+            form.fields["assesses_cos"].queryset = (assessment.course.course_outcomes.all().order_by("code"))
 
-    return render(
-        request,
-        "academics/assessment_form.html",
-        {"form": form, "form_title": "Update Assessment"},
-    )
+    # --- THIS IS THE KEY ADDITION ---
+    # Pass the list of currently selected CO IDs to the template context.
+    # This is used by the JavaScript to pre-select the checkboxes on page load.
+    selected_co_ids = list(assessment.assesses_cos.values_list('id', flat=True))
+
+    return render(request, "academics/assessment_form.html", {
+        "form": form, 
+        "form_title": f"Update Assessment: {assessment.name}",
+        "selected_co_ids": selected_co_ids # Pass the list to the template
+    })
 
 
 @login_required
