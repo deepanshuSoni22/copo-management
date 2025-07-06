@@ -20,11 +20,17 @@
                 <div>
                     <h2 class="text-xl font-semibold mb-1">Your Role</h2>
                     <p class="text-2xl font-bold">{{ user.profile.get_role_display }}</p>
-                    {# NEW: Display HOD's Department #}
+
                     {% if user.profile.role == 'HOD' and hod_department %}
                         <p class="text-sm opacity-90">for {{ hod_department.department.name }} ({{ hod_department.academic_year.start_date.year }}-{{ hod_department.academic_year.end_date.year }})</p>
                     {% elif user.profile.role == 'HOD' %}
                         <p class="text-sm opacity-90">No department assigned as HOD.</p>
+                    {% endif %}
+
+                    {% if user.profile.role == 'FACULTY' and faculty_department %}
+                        <p class="text-sm opacity-90">for {{ faculty_department.name }} Department </p>
+                    {% elif user.profile.role == 'FACULTY' %}
+                        <p class="text-sm opacity-90">No department assigned as Faculty.</p>
                     {% endif %}
                 </div>
             </div>

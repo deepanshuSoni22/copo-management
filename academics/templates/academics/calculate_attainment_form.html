@@ -89,6 +89,7 @@
 {% endblock %}
 
 {% block extra_js %}
+{{ block.super }}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const deptFilter = document.getElementById('co_department_filter');

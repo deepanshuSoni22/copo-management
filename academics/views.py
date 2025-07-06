@@ -82,15 +82,6 @@ def is_admin_or_hod_or_faculty(user):
         user.is_superuser or user.profile.role in ["ADMIN", "HOD", "FACULTY"]
     )
 
-
-# --- Existing Views (from previous step, ensure these are here or imported if you refactored) ---
-# from django.contrib.auth.views import LoginView, LogoutView
-# from django.urls import reverse_lazy
-# class CustomLoginView(LoginView): ...
-# class CustomLogoutView(LogoutView): ...
-# @login_required
-# def home_view(request): ...
-
 from django.db.models import Max  # Ensure Max is imported for latest attainment
 
 
@@ -177,6 +168,10 @@ def home_view(request):
         except AcademicDepartment.MultipleObjectsReturned: # Should not happen with OneToOneField
             context['hod_department'] = None
             messages.error(request, "Multiple Academic Departments found for your HOD profile. Data inconsistency detected!")
+    
+    if request.user.profile.role == 'FACULTY':
+        faculty_profile = request.user.profile
+        context['faculty_department'] = faculty_profile.department
 
     return render(request, "home.html", context)
 
