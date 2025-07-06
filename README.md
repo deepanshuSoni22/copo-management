@@ -2,7 +2,7 @@
 
 A comprehensive web-based system for managing Course Outcomes (CO) and Program Outcomes (PO) assessment and attainment in educational institutions.
 
-![COPO Management System Dashboard](./screenshots/dashboard.png)
+![COPO Management System Login Page](./screenshots/login-page.png)
 
 ## Table of Contents
 
