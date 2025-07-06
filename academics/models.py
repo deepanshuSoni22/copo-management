@@ -5,21 +5,20 @@ from django.contrib.auth.models import User  # <--- ADD THIS LINE
 
 
 class Department(models.Model):
+    BRANCH_CHOICES = [
+        ('Computer Science', 'Computer Science'),
+        ('Commerce', 'Commerce'),
+        ('Management', 'Management'),
+        ('Arts', 'Arts'),
+        ('Science', 'Science'),
+        ('Humanities', 'Humanities'),
+    ]
+
     name = models.CharField(max_length=100, unique=True)
-    # hod = models.OneToOneField(
-    #     UserProfile,
-    #     on_delete=models.SET_NULL,  # If HOD is deleted, department remains but HOD field becomes null
-    #     related_name="headed_department",
-    #     null=True,
-    #     blank=True,
-    #     limit_choices_to={
-    #         "role__in": ["HOD", "FACULTY"]
-    #     },  # This will show both HODs and Faculty
-    #     verbose_name="Head of Department",
-    # )
+    branch = models.CharField(max_length=100, choices=BRANCH_CHOICES)
 
     def __str__(self):
-        return self.name
+        return f"{self.name} - {self.branch}"
 
     class Meta:
         verbose_name = "Department"

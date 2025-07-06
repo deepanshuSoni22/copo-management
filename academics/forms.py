@@ -222,43 +222,17 @@ class AcademicDepartmentForm(forms.ModelForm):
 
 
 class DepartmentForm(forms.ModelForm):
-    # Customizing the HOD field to use a select widget for UserProfile objects
-    # This also allows for custom styling via attrs
-    # hod = forms.ModelChoiceField(
-    #     queryset=UserProfile.objects.filter(role="HOD").select_related(
-    #         "user"
-    #     ),  # Only show HOD profiles
-    #     empty_label="No HOD assigned",  # Optional: allow no HOD
-    #     required=False,  # HOD assignment is optional
-    #     widget=forms.Select(
-    #         attrs={
-    #             "class": "mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base"
-    #         }
-    #     ),
-    #     label="Head of Department",
-    # )
-
     class Meta:
         model = Department
-        fields = ["name"]
+        fields = ["name", "branch"]
         widgets = {
-            "name": forms.TextInput(
-                attrs={
-                    "class": "mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base"
-                }
-            ),
+            "name": forms.TextInput(attrs={
+                "class": "mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base"
+            }),
+            "branch": forms.Select(attrs={
+                "class": "mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-base"
+            }),
         }
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # Further filter HOD queryset in init if you want to ensure it only shows *active* HOD users if possible.
-        # This is already done with limit_choices_to in the model and filter(role='HOD') in the form field.
-        # Ensure the user's full name is displayed for HOD selection
-        # self.fields["hod"].label_from_instance = lambda obj: (
-        #     f"{obj.user.first_name} {obj.user.last_name} ({obj.user.username})"
-        #     if obj.user.first_name
-        #     else obj.user.username
-        # )
 
 
 class ProgramOutcomeForm(forms.ModelForm):
