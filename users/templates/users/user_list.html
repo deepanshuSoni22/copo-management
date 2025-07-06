@@ -2,21 +2,41 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}User Management{% endblock %}
+{% block title %}{{ form_title }}{% endblock %}
 
 {% block content %}
-    <div class="bg-white-pure rounded-lg shadow-md p-3 sm:p-4 lg:p-6 mb-4 sm:mb-6 lg:mb-8">
-        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 sm:mb-6 space-y-3 sm:space-y-0">
-            <h1 class="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-800">User Management</h1>
-            <a href="{% url 'user_create' %}"
-               class="inline-flex items-center justify-center px-3 sm:px-4 py-2 bg-brand-purple border border-transparent rounded-md font-semibold text-sm sm:text-base text-white-pure hover:bg-brand-yellow hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-purple transition duration-150 ease-in-out">
-                <svg class="w-4 h-4 sm:w-5 sm:h-5 mr-2 -ml-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
-                <span class="whitespace-nowrap">Add New User</span>
-            </a>
+<div class="bg-white-pure rounded-lg shadow-md p-3 sm:p-4 lg:p-6 mb-4 sm:mb-6 lg:mb-8"> 
+        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 sm:mb-6 space-y-3 sm:space-y-0"> 
+            <h1 class="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-800 flex-shrink-0">User Management</h1> 
+            
+            {# NEW: Role Selection Dropdown and Add Button #} 
+            <div class="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-3 flex-shrink-0"> 
+                <form id="role-filter-form" method="get" class="w-full sm:w-auto"> 
+                    <label for="role-select" class="sr-only">Filter by Role</label> 
+                    <select name="role" id="role-select" 
+                        class="mt-1 block w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-brand-purple focus:border-brand-purple text-sm min-w-[140px]" 
+                        onchange="document.getElementById('role-filter-form').submit();"> 
+                        <option value="ALL">All Roles</option> 
+                        {% for value, label in user_roles %} 
+                            <option value="{{ value }}" {% if selected_role == value %}selected{% endif %}>{{ label }}</option> 
+                        {% endfor %} 
+                    </select> 
+                </form> 
+            
+                <a id="add-user-button" 
+                href="{% url 'user_create' %}{% if selected_role and selected_role != 'ALL' %}?role={{ selected_role }}{% endif %}" 
+                class="w-full sm:w-auto inline-flex items-center justify-center px-3 py-2 bg-brand-purple border border-transparent rounded-md font-semibold text-sm text-white-pure hover:bg-brand-yellow hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-purple transition duration-150 ease-in-out whitespace-nowrap"> 
+                    <svg class="w-4 h-4 mr-2 -ml-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"> 
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/> 
+                    </svg> 
+                    <span id="add-button-text">Add New User</span> 
+                </a> 
+            </div> 
+            
         </div>
 
         {% if users %}
-            {# Desktop Table View - Hidden on mobile #}
+            {# Desktop Table View - Hidden on mobile/small tablet #}
             <div class="hidden md:block overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-light-gray-bg">
@@ -33,7 +53,7 @@
                     </thead>
                     <tbody class="bg-white-pure divide-y divide-gray-200">
                         {% for user_obj in users %}
-                        <tr class="hover:bg-gray-50 transition duration-150 ease-in-out">
+                        <tr class="hover:bg-light-gray-bg transition duration-150 ease-in-out">
                             <td class="px-4 lg:px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ user_obj.username }}</td>
                             <td class="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-default">
                                 {{ user_obj.first_name }} {{ user_obj.last_name }}
@@ -79,7 +99,7 @@
                 <div class="bg-white-pure rounded-lg p-4 border border-border-default hover:shadow-md transition duration-150 ease-in-out">
                     <div class="flex justify-between items-start mb-3">
                         <div class="flex-1 min-w-0">
-                            <h3 class="text-sm font-semibold text-gray-900 truncate mb-1">
+                            <h3 class="text-base font-semibold text-gray-900 truncate mb-1">
                                 {{ user_obj.username }} 
                                 {% if user_obj.first_name or user_obj.last_name %}<span class="text-gray-default font-normal">({{ user_obj.first_name }} {{ user_obj.last_name }})</span>{% endif %}
                             </h3>
@@ -103,12 +123,12 @@
                         
                         <div class="flex-shrink-0 ml-4 flex flex-col space-y-2">
                             <a href="{% url 'user_update' user_obj.pk %}" 
-                               class="inline-flex items-center justify-center px-3 py-1.5 text-xs font-medium text-brand-purple hover:text-brand-yellow hover:bg-brand-purple hover:bg-opacity-10 rounded-md transition duration-150 ease-in-out whitespace-nowrap">
+                               class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-brand-purple hover:text-brand-yellow hover:bg-brand-purple hover:bg-opacity-10 rounded-md transition duration-150 ease-in-out whitespace-nowrap">
                                 Edit
                             </a>
                             {% if user_obj.pk != request.user.pk and not user_obj.is_superuser %}
                                 <a href="{% url 'user_delete' user_obj.pk %}" 
-                                   class="inline-flex items-center justify-center px-3 py-1.5 text-xs font-medium text-red-600 hover:text-red-900 hover:bg-red-50 rounded-md transition duration-150 ease-in-out whitespace-nowrap"
+                                   class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-red-600 hover:text-red-900 hover:bg-red-50 rounded-md transition duration-150 ease-in-out whitespace-nowrap"
                                    onclick="return confirm('Are you sure you want to delete user {{ user_obj.username }}?');">
                                    Delete
                                 </a>
@@ -135,4 +155,24 @@
             </div>
         {% endif %}
     </div>
+    <script>
+        const roleSelect = document.getElementById('role-select');
+        const addButtonText = document.getElementById('add-button-text');
+    
+        const roleLabels = {
+            'HOD': 'Add New HoD',
+            'FACULTY': 'Add New Faculty',
+            'STUDENT': 'Add New Student',
+            'ADMIN': 'Add New Admin',
+            'ALL': 'Add New User'
+        };
+    
+        function updateAddButtonText() {
+            const selectedRole = roleSelect.value;
+            addButtonText.textContent = roleLabels[selectedRole] || 'Add New User';
+        }
+    
+        updateAddButtonText(); // On page load
+        roleSelect.addEventListener('change', updateAddButtonText); // On change
+    </script>    
 {% endblock %}

@@ -1,0 +1,163 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ form_title }}{% endblock %}
+
+{% block content %}
+<div class="bg-white-pure rounded-lg shadow-md p-3 sm:p-4 lg:p-6 max-w-4xl mx-auto mb-8">
+    <h1 class="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-800 mb-6">{{ form_title }}</h1>
+    
+    <form method="post" class="space-y-8">
+        {% csrf_token %}
+
+        {# --- Main Rubric Details --- #}
+        <div class="border border-border-default rounded-lg p-4 sm:p-6 space-y-4">
+            <h2 class="text-lg sm:text-xl font-semibold text-gray-800 mb-4 border-b pb-2">Rubric Details</h2>
+            
+            <div>
+                <label for="{{ form.name.id_for_label }}" class="block text-sm font-medium text-gray-default mb-1">{{ form.name.label }}</label>
+                {{ form.name }}
+                {% if form.name.errors %}<p class="mt-2 text-sm text-red-600">{{ form.name.errors.as_text }}</p>{% endif %}
+            </div>
+            <div>
+                <label for="{{ form.description.id_for_label }}" class="block text-sm font-medium text-gray-default mb-1">{{ form.description.label }}</label>
+                {{ form.description }}
+                {% if form.description.errors %}<p class="mt-2 text-sm text-red-600">{{ form.description.errors.as_text }}</p>{% endif %}
+            </div>
+        </div>
+
+        {# --- Rubric Criteria Formset --- #}
+        <div class="border border-border-default rounded-lg p-4 sm:p-6 space-y-4">
+            <h2 class="text-lg sm:text-xl font-semibold text-gray-800 mb-4 border-b pb-2">Rubric Criteria</h2>
+            
+            {{ formset.management_form }}
+            {% if formset.non_form_errors %}
+                <div class="bg-red-100 text-red-700 border border-red-200 p-3 rounded-md">
+                    {% for error in formset.non_form_errors %}<p>{{ error }}</p>{% endfor %}
+                </div>
+            {% endif %}
+            
+            <div id="criteria-container" class="space-y-4">
+                {% for criterion_form in formset %}
+                    <div class="criterion-form relative bg-light-gray-bg p-3 rounded-md border border-border-default">
+                        <h3 class="text-sm font-semibold text-gray-900 mb-2">Criterion #{{ forloop.counter }}</h3>
+                        {% for hidden in criterion_form.hidden_fields %}{{ hidden }}{% endfor %}
+                        
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label for="{{ criterion_form.order.id_for_label }}" class="block text-sm font-medium text-gray-default mb-1">{{ criterion_form.order.label }}</label>
+                                {{ criterion_form.order }}
+                                {% if criterion_form.order.errors %}<p class="mt-2 text-xs text-red-600">{{ criterion_form.order.errors.as_text }}</p>{% endif %}
+                            </div>
+                            <div>
+                                <label for="{{ criterion_form.max_score.id_for_label }}" class="block text-sm font-medium text-gray-default mb-1">{{ criterion_form.max_score.label }}</label>
+                                {{ criterion_form.max_score }}
+                                {% if criterion_form.max_score.errors %}<p class="mt-2 text-xs text-red-600">{{ criterion_form.max_score.errors.as_text }}</p>{% endif %}
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <label for="{{ criterion_form.criterion_text.id_for_label }}" class="block text-sm font-medium text-gray-default mb-1">{{ criterion_form.criterion_text.label }}</label>
+                            {{ criterion_form.criterion_text }}
+                            {% if criterion_form.criterion_text.errors %}<p class="mt-2 text-xs text-red-600">{{ criterion_form.criterion_text.errors.as_text }}</p>{% endif %}
+                        </div>
+
+                        {% if criterion_form.instance.pk %}
+                        <div class="mt-4 pt-3 border-t border-gray-300 flex justify-end">
+                            <label for="{{ criterion_form.DELETE.id_for_label }}" class="flex items-center text-sm text-red-600 hover:text-red-800 cursor-pointer">
+                                {{ criterion_form.DELETE }}
+                                <span class="ml-2 font-medium">Mark for Deletion</span>
+                            </label>
+                        </div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+
+            <div id="empty-criterion-form" style="display: none;">
+                <div class="criterion-form relative bg-light-gray-bg p-3 rounded-md border border-border-default">
+                    <h3 class="text-sm font-semibold text-gray-900 mb-2">New Criterion</h3>
+                    {% for hidden in formset.empty_form.hidden_fields %}{{ hidden }}{% endfor %}
+                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label for="{{ formset.empty_form.order.id_for_label }}" class="block text-sm font-medium text-gray-default mb-1">{{ formset.empty_form.order.label }}</label>
+                            {{ formset.empty_form.order }}
+                        </div>
+                        <div>
+                            <label for="{{ formset.empty_form.max_score.id_for_label }}" class="block text-sm font-medium text-gray-default mb-1">{{ formset.empty_form.max_score.label }}</label>
+                            {{ formset.empty_form.max_score }}
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <label for="{{ formset.empty_form.criterion_text.id_for_label }}" class="block text-sm font-medium text-gray-default mb-1">{{ formset.empty_form.criterion_text.label }}</label>
+                        {{ formset.empty_form.criterion_text }}
+                    </div>
+                </div>
+            </div>
+
+            <button type="button" id="add-criterion-form" class="mt-4 inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white-pure bg-brand-purple hover:bg-brand-yellow hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-purple">
+                Add Another Criterion
+            </button>
+        </div>
+
+        <div class="flex items-center space-x-4 mt-6">
+            <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white-pure bg-brand-purple hover:bg-brand-yellow hover:text-gray-900">
+                Save Rubric
+            </button>
+            <a href="{% url 'rubric_list' %}" class="inline-flex justify-center py-2 px-4 border border-border-default rounded-md shadow-sm text-sm font-medium text-gray-default bg-white-pure hover:bg-light-gray-bg">
+                Cancel
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // This generic function can be reused for multiple formsets on a page
+    function setupFormset(containerId, addButtonId, emptyFormId, totalFormsId, itemSelector) {
+        const addBtn = document.getElementById(addButtonId);
+        if (!addBtn) return;
+
+        addBtn.addEventListener('click', function() {
+            const container = document.getElementById(containerId);
+            const totalFormsInput = document.getElementById(totalFormsId);
+            const emptyFormTemplate = document.getElementById(emptyFormId);
+
+            if (!container || !totalFormsInput || !emptyFormTemplate) return;
+
+            const formIndex = parseInt(totalFormsInput.value);
+            const newFormHtml = emptyFormTemplate.innerHTML.replace(/__prefix__/g, formIndex);
+            
+            const newFormDiv = document.createElement('div');
+            // Adding a class that can be targeted for consistent styling and removal
+            newFormDiv.className = 'formset-item-container mt-4';
+            newFormDiv.innerHTML = newFormHtml;
+            
+            // Add a remove button for dynamically added forms
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'mt-2 text-sm font-medium text-red-600 hover:text-red-800';
+            removeBtn.innerText = 'Remove';
+            removeBtn.onclick = function() {
+                newFormDiv.remove();
+                // Note: We don't decrement TOTAL_FORMS. Django handles non-consecutive form indexes correctly.
+            };
+            
+            newFormDiv.querySelector(itemSelector).appendChild(removeBtn);
+            container.appendChild(newFormDiv);
+            totalFormsInput.value = formIndex + 1;
+        });
+    }
+
+    // Initialize the formset for Rubric Criteria
+    setupFormset(
+        'criteria-container', 
+        'add-criterion-form', 
+        'empty-criterion-form', 
+        'id_criteria-TOTAL_FORMS',
+        '.criterion-form' // The class selector for the main container inside the template
+    );
+});
+</script>
+{% endblock %}

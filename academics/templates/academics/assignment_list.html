@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ form_title }}{% endblock %}
+
+{% block content %}
+<div class="bg-white-pure rounded-lg shadow-md p-3 sm:p-4 lg:p-6 mb-4 sm:mb-6 lg:mb-8">
+    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 sm:mb-6 space-y-3 sm:space-y-0">
+        <h1 class="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-800">{{ form_title }}</h1>
+        <a href="{% url 'assignment_create' %}"
+           class="inline-flex items-center justify-center px-3 sm:px-4 py-2 bg-brand-purple border border-transparent rounded-md font-semibold text-sm sm:text-base text-white-pure hover:bg-brand-yellow hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-purple transition duration-150 ease-in-out">
+            <svg class="w-4 h-4 sm:w-5 sm:h-5 mr-2 -ml-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+            <span class="whitespace-nowrap">Create Assignment</span>
+        </a>
+    </div>
+
+    {% if assignments %}
+        {# Desktop Table View - Hidden on mobile/small tablet #}
+        <div class="hidden md:block overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-light-gray-bg">
+                    <tr>
+                        <th scope="col" class="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-default uppercase tracking-wider rounded-tl-lg">Title</th>
+                        <th scope="col" class="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-default uppercase tracking-wider">Course</th>
+                        <th scope="col" class="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-default uppercase tracking-wider">Due Date</th>
+                        <th scope="col" class="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-default uppercase tracking-wider">Type</th>
+                        <th scope="col" class="relative px-4 lg:px-6 py-3 rounded-tr-lg">
+                            <span class="sr-only">Actions</span>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white-pure divide-y divide-gray-200">
+                    {% for assignment in assignments %}
+                    <tr class="hover:bg-light-gray-bg transition duration-150 ease-in-out">
+                        <td class="px-4 lg:px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ assignment.title }}</td>
+                        <td class="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-default">{{ assignment.course.code }}</td>
+                        <td class="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-default">{{ assignment.due_date|date:"d M Y, P" }}</td>
+                        <td class="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-default">{{ assignment.get_assignment_type_display }}</td>
+                        <td class="px-4 lg:px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <a href="{% url 'submission_list_for_assignment' assignment.pk %}" class="text-green-600 hover:text-green-900 mr-3 lg:mr-4">Submissions</a>
+                            <a href="{% url 'assignment_update' assignment.pk %}" class="text-brand-purple hover:text-brand-yellow mr-3 lg:mr-4">Edit</a>
+                            <a href="{% url 'assignment_delete' assignment.pk %}" class="text-red-600 hover:text-red-900">Delete</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {# Mobile Card View - Visible only on mobile/small tablet #}
+        <div class="md:hidden space-y-3">
+            {% for assignment in assignments %}
+            <div class="bg-white-pure rounded-lg p-4 border border-border-default hover:shadow-md transition duration-150 ease-in-out">
+                <div class="flex-1 min-w-0 mb-3">
+                    <h3 class="text-base font-semibold text-gray-900 truncate mb-1">
+                        {{ assignment.title }}
+                    </h3>
+                    <p class="text-xs text-gray-default">
+                        <strong>Course:</strong> {{ assignment.course.code }} | <strong>Due:</strong> {{ assignment.due_date|date:"d M Y" }}
+                    </p>
+                     <p class="text-xs text-gray-default mt-1">
+                        <strong>Type:</strong> {{ assignment.get_assignment_type_display }}
+                    </p>
+                </div>
+                <div class="flex justify-end space-x-3 pt-2 border-t border-gray-200">
+                    <a href="{% url 'submission_list_for_assignment' assignment.pk %}" class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-green-600 hover:text-green-900 hover:bg-green-50 rounded-md">
+                        Submissions
+                    </a>
+                    <a href="{% url 'assignment_update' assignment.pk %}" class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-brand-purple hover:text-brand-yellow hover:bg-brand-purple hover:bg-opacity-10 rounded-md">
+                        Edit
+                    </a>
+                    <a href="{% url 'assignment_delete' assignment.pk %}" class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-red-600 hover:text-red-900 hover:bg-red-50 rounded-md">
+                        Delete
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="text-center py-8 sm:py-12">
+            <svg class="mx-auto h-12 w-12 text-gray-default mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+            <h3 class="text-lg font-medium text-gray-900 mb-2">No Assignments Found</h3>
+            <p class="text-gray-default mb-4">Get started by creating your first assignment.</p>
+            <a href="{% url 'assignment_create' %}"
+               class="inline-flex items-center px-4 py-2 bg-brand-purple border border-transparent rounded-md font-semibold text-white-pure hover:bg-brand-yellow hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-purple">
+                <svg class="w-5 h-5 mr-2 -ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                Create Assignment
+            </a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

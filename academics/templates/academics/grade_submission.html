@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+{% block title %}{{ form_title }}{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-lg shadow-md p-6 max-w-3xl mx-auto">
+    <h1 class="text-2xl font-bold text-gray-800 mb-2">{{ form_title }}</h1>
+    <p class="text-sm text-gray-500 mb-6">Assignment: {{ assignment.title }}</p>
+
+    {% if assignment.assignment_type == 'pdf_upload' %}
+        <div class="mb-8 border rounded-lg p-4 bg-gray-50">
+            <h2 class="text-lg font-semibold text-gray-700">Student's Submission</h2>
+            {% if submission.file %}
+                <p class="mt-2">
+                    <a href="{{ submission.file.url }}" target="_blank" class="text-indigo-600 hover:underline font-medium">
+                        Download Submitted File
+                    </a>
+                </p>
+            {% else %}
+                <p class="mt-2 text-gray-600">No file was submitted for this assignment.</p>
+            {% endif %}
+            <p class="text-xs text-gray-500 mt-1">Submitted on: {{ submission.submitted_at|date:"d M Y, P" }}</p>
+        </div>
+    {% endif %}
+
+    <form method="post" class="space-y-8">
+        {% csrf_token %}
+
+        {% if rubric_data %}
+            <div class="space-y-4">
+                <h2 class="text-xl font-semibold text-gray-700">Rubric Scoring</h2>
+                {{ rubric_formset.management_form }}
+                
+                {% for form, score_instance in rubric_data %}
+                    <div class="grid grid-cols-4 gap-4 items-center border-t pt-4">
+                        <!-- Hidden criterion field to preserve foreign key -->
+                        {{ form.criterion }}
+                        {{ form.id }}
+
+                        <div class="col-span-3">
+                            <p class="font-medium text-gray-800">{{ score_instance.criterion.criterion_text }}</p>
+                            <p class="text-sm text-gray-500">(Max Score: {{ score_instance.criterion.max_score }})</p>
+                        </div>
+
+                        <div class="col-span-1">
+                            {{ form.score }}
+                        </div>
+
+                        {% for error in form.score.errors %}
+                            <p class="col-span-4 text-xs text-red-600 -mt-2">{{ error }}</p>
+                        {% endfor %}
+                        {% for error in form.non_field_errors %}
+                            <p class="col-span-4 text-xs text-red-600">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+        
+        {% if rubric_formset.errors %}
+            <ul class="text-red-500 text-sm">
+                {% for form in rubric_formset.forms %}
+                    {% for field, errors in form.errors.items %}
+                        {% for error in errors %}
+                            <li><strong>{{ field }}:</strong> {{ error }}</li>
+                        {% endfor %}
+                    {% endfor %}
+                {% endfor %}
+            </ul>
+        {% endif %}
+
+        <div class="space-y-4 border-t pt-6">
+            <h2 class="text-xl font-semibold text-gray-700">Overall Grade & Feedback</h2>
+            {{ grading_form.as_p }}
+        </div>
+
+        <div class="flex items-center space-x-4 pt-4 border-t">
+            <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-brand-purple hover:bg-brand-yellow hover:text-gray-900">
+                Save Grade
+            </button>
+            <a href="{% url 'submission_list_for_assignment' assignment.pk %}" class="inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                Cancel
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}

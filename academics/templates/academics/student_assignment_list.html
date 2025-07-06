@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block title %}{{ form_title }}{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-lg shadow-md p-6">
+    <h1 class="text-2xl font-bold text-gray-800 mb-6">{{ form_title }}</h1>
+    <div class="space-y-4">
+        {% for assignment in assignments %}
+            <a href="{% url 'assignment_detail_and_submit' assignment.pk %}" class="block p-4 border rounded-lg hover:bg-gray-50 transition">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-900">{{ assignment.title }}</h3>
+                        <p class="text-sm text-gray-600">
+                            <strong>Course:</strong> {{ assignment.course.code }} | <strong>Due:</strong> {{ assignment.due_date|date:"d M Y, P" }}
+                        </p>
+                    </div>
+                    <div>
+                        {% if assignment.id in submitted_assignments_ids %}
+                            <span class="px-3 py-1 text-xs font-medium text-green-800 bg-green-100 rounded-full">Submitted</span>
+                        {% else %}
+                             <span class="px-3 py-1 text-xs font-medium text-yellow-800 bg-yellow-100 rounded-full">Pending</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </a>
+        {% empty %}
+            <p>You have no assignments at this time.</p>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

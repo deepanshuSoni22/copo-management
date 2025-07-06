@@ -5,15 +5,17 @@
 {% block title %}{{ form_title }}{% endblock %}
 
 {% block content %}
-    <div class="bg-white rounded-lg shadow-md p-6 mb-8">
-        <h1 class="text-3xl font-bold text-gray-800 mb-6">{{ form_title }}</h1>
+<div class="bg-white-pure rounded-lg shadow-md p-3 sm:p-4 lg:p-6 mb-4 sm:mb-6 lg:mb-8">
+    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 sm:mb-6 space-y-3 sm:space-y-0">
+        <h1 class="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-800">{{ form_title }}</h1>
+    </div>
 
-        {# Filters Section #}
-        <form method="get" class="mb-8 p-4 bg-gray-50 rounded-lg shadow-sm flex flex-wrap items-center space-y-4 md:space-y-0 md:space-x-4">
-            <div class="w-full md:w-auto flex-grow">
-                <label for="academic_year_filter" class="block text-sm font-medium text-gray-700 mb-1">Academic Year:</label>
+    <form method="get" id="filterForm" class="w-full bg-gray-50 p-4 rounded-lg shadow-sm mb-6">
+        <div class="flex flex-col sm:flex-row sm:items-end sm:space-x-4 space-y-4 sm:space-y-0">
+            <!-- Academic Year Filter -->
+            <div class="w-full sm:w-64">
                 <select name="academic_year" id="academic_year_filter"
-                        class="mt-1 block w-full md:w-auto px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                    class="block w-full px-3 py-2 border border-border-default rounded-md shadow-sm sm:text-sm focus:ring-brand-purple focus:border-brand-purple">
                     <option value="">All Years</option>
                     {% for year in academic_years %}
                         <option value="{{ year.pk }}" {% if selected_academic_year_id|stringformat:"s" == year.pk|stringformat:"s" %}selected{% endif %}>
@@ -22,51 +24,113 @@
                     {% endfor %}
                 </select>
             </div>
-            <div class="w-full md:w-auto pt-5 md:pt-0"> {# Added padding top for button alignment #}
-                <button type="submit"
-                        class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out">
-                    Apply Filters
-                </button>
-            </div>
-        </form>
 
-        {% if po_attainments %}
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider rounded-tl-lg">Academic Year</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PO Code</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PO Description</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider text-center">Attainment %</th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-                        {% for po_att in po_attainments %}
-                        <tr class="hover:bg-gray-50 transition duration-150 ease-in-out">
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                {{ po_att.academic_year.start_date.year }}-{{ po_att.academic_year.end_date.year }}
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                                {{ po_att.program_outcome.code }}
-                            </td>
-                            <td class="px-6 py-4 text-sm text-gray-700">{{ po_att.program_outcome.description|truncatechars:70 }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-center">
-                                {% if po_att.attainment_percentage is not None %}
-                                    <span class="{% if po_att.attainment_percentage >= 60 %}text-green-600{% elif po_att.attainment_percentage >= 40 %}text-yellow-600{% else %}text-red-600{% endif %}">
-                                        {{ po_att.attainment_percentage|floatformat:2 }}%
-                                    </span>
-                                {% else %}
-                                    <span class="text-gray-500 italic">N/A</span>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+            <!-- Department Filter -->
+            <div class="w-full sm:w-64">
+                <select name="department" id="department_filter"
+                    class="block w-full px-3 py-2 border border-border-default rounded-md shadow-sm sm:text-sm focus:ring-brand-purple focus:border-brand-purple"
+                    {% if is_hod %}disabled{% endif %}>
+                    {% if not is_hod %}
+                        <option value="">All Departments</option>
+                    {% endif %}
+                    {% for dept in departments %}
+                        <option value="{{ dept.pk }}" {% if selected_department_id|stringformat:"s" == dept.pk|stringformat:"s" %}selected{% endif %}>
+                            {{ dept.name }}
+                        </option>
+                    {% endfor %}
+                </select>
             </div>
-        {% else %}
-            <p class="text-gray-600">No Program Outcome Attainment data found for the selected filters. Please ensure attainment calculations have been run.</p>
-        {% endif %}
+        </div>
+    </form>
+
+    {% if po_attainments %}
+    <!-- Desktop Table -->
+    <div class="hidden md:block overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-light-gray-bg">
+                <tr>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Academic Year</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Department</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">PO Code</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
+                    <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Attainment %</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                {% for po_att in po_attainments %}
+                <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-600">{{ po_att.academic_year }}</td>
+                    <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-800">{{ po_att.program_outcome.department.name }}</td>
+                    <td class="px-4 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">{{ po_att.program_outcome.code }}</td>
+                    <td class="px-4 py-4 text-sm text-gray-600">{{ po_att.program_outcome.description }}</td>
+                    <td class="px-4 py-4 whitespace-nowrap text-sm font-bold text-center">
+                        {% if po_att.attainment_percentage is not None %}
+                            <span class="px-3 py-1 rounded-full {% if po_att.attainment_percentage >= 60 %}bg-green-100 text-green-800{% elif po_att.attainment_percentage >= 40 %}bg-yellow-100 text-yellow-800{% else %}bg-red-100 text-red-800{% endif %}">
+                                {{ po_att.attainment_percentage|floatformat:2 }}%
+                            </span>
+                        {% else %}
+                            <span class="text-gray-400 italic">Not Calculated</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
+
+    <!-- Mobile Card View -->
+    <div class="md:hidden space-y-3">
+        {% for po_att in po_attainments %}
+        <div class="bg-white-pure p-4 rounded-lg border border-border-default hover:shadow-md transition duration-150 ease-in-out">
+            <div class="flex justify-between items-start mb-3">
+                <div class="flex-1 min-w-0">
+                    <h3 class="text-base font-semibold text-gray-900">{{ po_att.program_outcome.department.name }} - {{ po_att.program_outcome.code }}</h3>
+                    <p class="text-xs text-gray-default">{{ po_att.academic_year }}</p>
+                    <p class="text-sm text-gray-default mt-2">{{ po_att.program_outcome.description }}</p>
+                </div>
+                <div class="flex-shrink-0 ml-4 text-center">
+                    <p class="text-xs font-medium text-gray-default">Attainment</p>
+                    <p class="text-xl font-bold mt-1">
+                        {% if po_att.attainment_percentage is not None %}
+                            <span class="{% if po_att.attainment_percentage >= 60 %}text-green-600{% elif po_att.attainment_percentage >= 40 %}text-yellow-600{% else %}text-red-600{% endif %}">
+                                {{ po_att.attainment_percentage|floatformat:2 }}%
+                            </span>
+                        {% else %}
+                            <span class="text-gray-400 italic text-base">N/A</span>
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-8 sm:py-12">
+        <svg class="mx-auto h-12 w-12 text-gray-default mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 9.75h4.5m-2.25-2.25v4.5m0 6a9 9 0 100-18 9 9 0 000 18z"></path>
+        </svg>
+        <h3 class="text-lg font-medium text-gray-900 mb-2">No Data Found</h3>
+        <p class="text-gray-default mb-2">Please ensure calculations have been performed in the "Calculate Attainment" page.</p>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const academicYearSelect = document.getElementById('academic_year_filter');
+        const departmentSelect = document.getElementById('department_filter');
+
+        function autoSubmitForm() {
+            document.getElementById('filterForm').submit();
+        }
+
+        if (academicYearSelect) {
+            academicYearSelect.addEventListener('change', autoSubmitForm);
+        }
+
+        if (departmentSelect) {
+            departmentSelect.addEventListener('change', autoSubmitForm);
+        }
+    });
+</script>
 {% endblock %}

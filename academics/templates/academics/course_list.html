@@ -2,115 +2,185 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Courses{% endblock %}
+{% block title %}{{ form_title }}{% endblock %}
 
 {% block content %}
-    <div class="bg-white-pure rounded-lg shadow-md p-3 sm:p-4 lg:p-6 mb-4 sm:mb-6 lg:mb-8">
+<div class="bg-white-pure rounded-lg shadow-md p-3 sm:p-4 lg:p-6 mb-4 sm:mb-6 lg:mb-8">
+        {% if user.is_superuser or user.profile.role == 'ADMIN' or user.profile.role == 'HOD' %}
         <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 sm:mb-6 space-y-3 sm:space-y-0">
-            <h1 class="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-800">Courses</h1>
-            <a href="{% url 'course_create' %}"
-               class="inline-flex items-center justify-center px-3 sm:px-4 py-2 bg-brand-purple border border-transparent rounded-md font-semibold text-sm sm:text-base text-white-pure hover:bg-brand-yellow hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-purple transition duration-150 ease-in-out">
-                <svg class="w-4 h-4 sm:w-5 sm:h-5 mr-2 -ml-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
-                <span class="whitespace-nowrap">Add Course</span>
-            </a>
-        </div>
-
-        {% if courses %}
-            {# Desktop Table View - Hidden on mobile/small tablet #}
-            <div class="hidden md:block overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-light-gray-bg">
-                        <tr>
-                            <th scope="col" class="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-default uppercase tracking-wider rounded-tl-lg">Code</th>
-                            <th scope="col" class="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-default uppercase tracking-wider">Name</th>
-                            <th scope="col" class="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-default uppercase tracking-wider">Department</th>
-                            <th scope="col" class="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-default uppercase tracking-wider">Academic Year</th>
-                            <th scope="col" class="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-default uppercase tracking-wider">Faculty</th>
-                            <th scope="col" class="relative px-4 lg:px-6 py-3 rounded-tr-lg">
-                                <span class="sr-only">Actions</span>
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white-pure divide-y divide-gray-200">
-                        {% for course in courses %}
-                        <tr class="hover:bg-light-gray-bg transition duration-150 ease-in-out">
-                            <td class="px-4 lg:px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ course.code }}</td>
-                            <td class="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-default">{{ course.name }}</td>
-                            <td class="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-default">
-                                {{ course.department.name|default:'N/A' }}
-                            </td>
-                            <td class="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-default">
-                                {{ course.academic_year.start_date.year }}-{{ course.academic_year.end_date.year }}
-                            </td>
-                            <td class="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-default">
-                                {% if course.faculty.all %}
-                                    {% for faculty_profile in course.faculty.all %}
-                                        <span class="block">{{ faculty_profile.user.first_name }} {{ faculty_profile.user.last_name|default:faculty_profile.user.username }}</span>
-                                    {% endfor %}
-                                {% else %}
-                                    <span class="text-gray-default italic">None</span>
-                                {% endif %}
-                            </td>
-                            <td class="px-4 lg:px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                <a href="{% url 'course_update' course.pk %}" class="text-brand-purple hover:text-brand-yellow mr-3 lg:mr-4 transition duration-150 ease-in-out">Edit</a>
-                                <a href="{% url 'course_delete' course.pk %}" class="text-red-600 hover:text-red-900 transition duration-150 ease-in-out"
-                                   onclick="return confirm('Are you sure you want to delete Course {{ course.code }} - {{ course.name }}?');">
-                                   Delete
-                                </a>
-                            </td>
-                        </tr>
+            <h1 class="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-800">{{ form_title }}</h1>
+        
+            <div class="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-3">
+                <form method="get" class="w-full sm:w-auto">
+                    <select name="semester"
+                            onchange="this.form.submit()"
+                            class="block w-full sm:w-auto px-3 py-2 border border-border-default rounded-md shadow-sm focus:ring-brand-purple focus:border-brand-purple sm:text-sm min-w-[180px]">
+                        <option value="">All Semesters</option>
+                        {% for sem in semesters %}
+                            <option value="{{ sem.pk }}" {% if selected_semester_id|stringformat:"s" == sem.pk|stringformat:"s" %}selected{% endif %}>
+                                {{ sem.name }} ({{ sem.academic_department.department.name }} - {{ sem.academic_department.academic_year.start_date.year }})
+                            </option>
                         {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-
-            {# Mobile Card View - Visible only on mobile/small tablet #}
-            <div class="md:hidden space-y-3">
-                {% for course in courses %}
-                <div class="bg-white-pure rounded-lg p-4 border border-border-default hover:shadow-md transition duration-150 ease-in-out">
-                    <div class="flex justify-between items-start mb-3">
-                        <div class="flex-1 min-w-0">
-                            <h3 class="text-base font-semibold text-gray-900 truncate mb-1">
-                                {{ course.code }} - {{ course.name }}
-                            </h3>
-                            <p class="text-xs text-gray-default mb-2">
-                                Dept: {{ course.department.name|default:'N/A' }} | Year: {{ course.academic_year.start_date.year }}-{{ course.academic_year.end_date.year }}
-                            </p>
-                            <p class="text-xs text-gray-default">
-                                Faculty: {% if course.faculty.all %}
-                                            {% for faculty_profile in course.faculty.all %}{{ faculty_profile.user.last_name|default:faculty_profile.user.username }}{% if not forloop.last %}, {% endif %}{% endfor %}
-                                         {% else %}N/A{% endif %}
-                            </p>
-                        </div>
-                    </div>
-                    
-                    <div class="flex justify-end space-x-3 pt-2 border-t border-gray-200">
-                        <a href="{% url 'course_update' course.pk %}" 
-                           class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-brand-purple hover:text-brand-yellow hover:bg-brand-purple hover:bg-opacity-10 rounded-md transition duration-150 ease-in-out">
-                            Edit
-                        </a>
-                        <a href="{% url 'course_delete' course.pk %}" 
-                           class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-red-600 hover:text-red-900 hover:bg-red-50 rounded-md transition duration-150 ease-in-out"
-                           onclick="return confirm('Are you sure you want to delete Course {{ course.code }} - {{ course.name }}?');">
-                            Delete
-                        </a>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-        {% else %}
-            <div class="text-center py-8 sm:py-12">
-                <svg class="mx-auto h-12 w-12 text-gray-default mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13.438m0-13.438a4.5 4.5 0 100-9 4.5 4.5 0 000 9zm-7.5 0h15M12 6.253c1.867 0 3.682.525 5.176 1.426L22 4m-4 8a2 2 0 11-4 0 2 2 0 014 0zm-7.5 0h15"></path>
-                </svg>
-                <h3 class="text-lg font-medium text-gray-900 mb-2">No Courses Found</h3>
-                <p class="text-gray-default mb-4">Get started by creating your first course.</p>
+                    </select>
+                </form>
+                
                 <a href="{% url 'course_create' %}"
-                   class="inline-flex items-center px-4 py-2 bg-brand-purple border border-transparent rounded-md font-semibold text-white-pure hover:bg-brand-yellow hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-purple transition duration-150 ease-in-out">
-                    <svg class="w-5 h-5 mr-2 -ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
-                    Add Course
+                   id="add-course-btn"
+                   class="w-full inline-flex items-center justify-center px-3 sm:px-4 py-2 bg-brand-purple border border-transparent rounded-md font-semibold text-sm sm:text-base text-white-pure hover:bg-brand-yellow hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-purple transition duration-150 ease-in-out">
+                    <svg class="w-4 h-4 sm:w-5 sm:h-5 mr-2 -ml-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    <span class="whitespace-nowrap">Add Course</span>
                 </a>
             </div>
+        </div>
+        {% else %}
+            <div class="mb-4 sm:mb-6">
+                <h1 class="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-800">{{ form_title }}</h1>
+            </div>
         {% endif %}
+
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const departmentSelect = document.getElementById('department_filter');
+                const semesterSelect = document.getElementById('semester_filter');
+
+                function updateURL() {
+                    const params = new URLSearchParams(window.location.search);
+                    const dept = departmentSelect ? departmentSelect.value : '';
+                    const sem = semesterSelect ? semesterSelect.value : '';
+
+                    if (departmentSelect) {
+                        dept ? params.set('department', dept) : params.delete('department');
+                    }
+                    if (semesterSelect) {
+                        sem ? params.set('semester', sem) : params.delete('semester');
+                    }
+
+                    window.location.href = `${window.location.pathname}?${params.toString()}`;
+                }
+
+                if (departmentSelect) {
+                    departmentSelect.addEventListener('change', updateURL);
+                }
+                if (semesterSelect) {
+                    semesterSelect.addEventListener('change', updateURL);
+                }
+            });
+        </script>
+
+{% if courses %}
+{# Desktop Table View - Hidden on mobile/small tablet #}
+<div class="hidden md:block overflow-x-auto">
+    <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-light-gray-bg">
+            <tr>
+                <th scope="col" class="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-default uppercase tracking-wider rounded-tl-lg">Code</th>
+                <th scope="col" class="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-default uppercase tracking-wider">Name</th>
+                <th scope="col" class="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-default uppercase tracking-wider">Department</th>
+                <th scope="col" class="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-default uppercase tracking-wider">Semester</th>
+                <th scope="col" class="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-default uppercase tracking-wider">Academic Year</th>
+                <th scope="col" class="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-default uppercase tracking-wider">Faculty</th>
+                <th scope="col" class="relative px-4 lg:px-6 py-3 rounded-tr-lg">
+                    <span class="sr-only">Actions</span>
+                </th>
+            </tr>
+        </thead>
+        <tbody class="bg-white-pure divide-y divide-gray-200">
+            {% for course in courses %}
+            <tr class="hover:bg-light-gray-bg transition duration-150 ease-in-out">
+                <td class="px-4 lg:px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ course.code }}</td>
+                <td class="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-default">{{ course.name }}</td>
+                <td class="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-default">{{ course.department.name|default:'N/A' }}</td>
+                <td class="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-default">{% if course.semester %}{{ course.semester.name }}{% else %}N/A{% endif %}</td>
+                <td class="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-default">{% if course.semester and course.semester.academic_department %}{{ course.semester.academic_department.academic_year.start_date.year }}-{{ course.semester.academic_department.academic_year.end_date.year }}{% else %}N/A{% endif %}</td>
+                <td class="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-default">
+                    {% for faculty_profile in course.faculty.all %}<span class="block">{{ faculty_profile.user.first_name }} {{ faculty_profile.user.last_name|default:faculty_profile.user.username }}</span>{% empty %}<span class="text-gray-default italic">None</span>{% endfor %}
+                </td>
+                <td class="px-4 lg:px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    {% if request.user.is_superuser or request.user.profile.role == 'ADMIN' or request.user.profile.role == 'HOD' %}
+                        {% if not course.course_plan %}
+                            <a href="{% url 'course_plan_create' %}?course_id={{ course.pk }}" class="text-green-600 hover:text-green-900 mr-3 lg:mr-4">Create Plan</a>
+                        {% else %}
+                            <a href="{% url 'course_plan_update' course.pk %}" class="text-blue-600 hover:text-blue-900 mr-3 lg:mr-4">View/Edit Plan</a>
+                        {% endif %}
+                        <a href="{% url 'course_update' course.pk %}" class="text-brand-purple hover:text-brand-yellow mr-3 lg:mr-4">Edit</a>
+                        <a href="{% url 'course_delete' course.pk %}" class="text-red-600 hover:text-red-900">Delete</a>
+                    {% elif request.user.profile in course.faculty.all %}
+                        <a href="{% url 'course_update' course.pk %}" class="text-brand-purple hover:text-brand-yellow">Edit</a>
+                    {% endif %}
+                    </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{# Mobile Card View - Visible only on mobile/small tablet #}
+<div class="md:hidden space-y-3">
+    {% for course in courses %}
+    <div class="bg-white-pure rounded-lg p-4 border border-border-default hover:shadow-md transition duration-150 ease-in-out">
+        <div class="flex justify-between items-start mb-3">
+            <div class="flex-1 min-w-0">
+                <h3 class="text-base font-semibold text-gray-900 truncate mb-1">
+                    {{ course.code }} - {{ course.name }}
+                </h3>
+                <p class="text-xs text-gray-default mb-2">
+                    Dept: {{ course.department.name|default:'N/A' }} | Semester: {% if course.semester %}{{ course.semester.name }}{% else %}N/A{% endif %} | Year: {% if course.semester and course.semester.academic_department %}{{ course.semester.academic_department.academic_year.start_date.year }}-{{ course.semester.academic_department.academic_year.end_date.year }}{% else %}N/A{% endif %}
+                </p>
+                <p class="text-xs text-gray-default">
+                    Faculty: {% if course.faculty.all %}
+                                {% for faculty_profile in course.faculty.all %}{{ faculty_profile.user.last_name|default:faculty_profile.user.username }}{% if not forloop.last %}, {% endif %}{% endfor %}
+                             {% else %}N/A{% endif %}
+                </p>
+            </div>
+        </div>
+        
+        <div class="flex justify-end space-x-3 pt-2 border-t border-gray-200">
+            {# Create/View Plan button for mobile #}
+            {% if user.is_superuser or user.profile.role == 'ADMIN' or user.profile.role == 'HOD' %} {# Only HOD/Admin can manage plans #}
+                {% if not course.course_plan %}
+                    <a href="{% url 'course_plan_create' %}?course_id={{ course.pk }}" 
+                       class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-green-600 hover:text-green-900 hover:bg-green-50 rounded-md transition duration-150 ease-in-out whitespace-nowrap">
+                        Create Plan
+                    </a>
+                {% else %}
+                    <a href="{% url 'course_plan_update' course.pk %}" 
+                       class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded-md transition duration-150 ease-in-out whitespace-nowrap">
+                        View/Edit Plan
+                    </a>
+                {% endif %}
+                <a href="{% url 'course_update' course.pk %}" 
+                class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-brand-purple hover:text-brand-yellow hover:bg-brand-purple hover:bg-opacity-10 rounded-md transition duration-150 ease-in-out">
+                    Edit
+                </a>
+                <a href="{% url 'course_delete' course.pk %}" 
+                class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-red-600 hover:text-red-900 hover:bg-red-50 rounded-md transition duration-150 ease-in-out"
+                onclick="return confirm('Are you sure you want to delete Course {{ course.code }} - {{ course.name }}?');">
+                    Delete
+                </a>
+            {% elif request.user.profile in course.faculty.all %}
+                <a href="{% url 'course_update' course.pk %}" class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-brand-purple hover:text-brand-yellow hover:bg-brand-purple hover:bg-opacity-10 rounded-md">Edit</a>
+            {% endif %}
+        </div>
     </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-8 sm:py-12">
+    <svg class="mx-auto h-12 w-12 text-gray-default mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13.438m0-13.438a4.5 4.5 0 100-9 4.5 4.5 0 000 9zm-7.5 0h15M12 6.253c1.867 0 3.682.525 5.176 1.426L22 4m-4 8a2 2 0 11-4 0 2 2 0 014 0zm-7.5 0h15"></path>
+    </svg>
+    <h3 class="text-lg font-medium text-gray-900 mb-2">No Courses Found</h3>
+    <p class="text-gray-default mb-4">Get started by creating your first course.</p>
+    {% if user.is_superuser or user.profile.role == 'ADMIN' or user.profile.role == 'HOD' %}
+        <a href="{% url 'course_create' %}"
+        class="inline-flex items-center px-4 py-2 bg-brand-purple border border-transparent rounded-md font-semibold text-white-pure hover:bg-brand-yellow hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-purple transition duration-150 ease-in-out">
+            <svg class="w-5 h-5 mr-2 -ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+            Add Course
+        </a>
+    {% endif %}
+</div>
+{% endif %}
+</div>
 {% endblock %}

@@ -16,9 +16,6 @@ DEBUG = True
 
 ALLOWED_HOSTS = [
     '127.0.0.1',
-    # '172.29.128.1',
-    # '10.10.25.242',
-    '192.168.101.117',
 ]
 
 
@@ -132,3 +129,9 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles') # Or 'static_cdn' or 'collec
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+# Add these lines at the end for user-uploaded files (media)
+MEDIA_URL = '/submissions/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'submissions')
+

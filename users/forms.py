@@ -3,6 +3,8 @@ from django import forms
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import UserCreationForm, UserChangeForm
 from .models import UserProfile, UserRole  # Import your custom models
+from academics.models import Department  # <-- Make sure to import Department
+
 
 
 class UserProfileForm(forms.ModelForm):
@@ -40,6 +42,14 @@ class UserCreateForm(UserCreationForm):
             }
         ),
         label="User Role",
+    )
+
+    # --- ADD THE DEPARTMENT FIELD HERE ---
+    department = forms.ModelChoiceField(
+        queryset=Department.objects.all(),
+        required=False,  # Make it optional, as not all roles need a department
+        widget=forms.Select(attrs={"class": "mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm"}),
+        label="Department"
     )
 
     class Meta(UserCreationForm.Meta):
@@ -86,7 +96,7 @@ class UserCreateForm(UserCreationForm):
         if commit:
             user.save()
             # Create UserProfile instance
-            UserProfile.objects.create(user=user, role=self.cleaned_data["role"])
+            UserProfile.objects.create(user=user, role=self.cleaned_data["role"], department=self.cleaned_data.get("department"))
         return user
 
 
@@ -99,6 +109,14 @@ class UserUpdateForm(UserChangeForm):
             }
         ),
         label="User Role",
+    )
+
+    # --- 1. ADD THE DEPARTMENT FIELD DEFINITION ---
+    department = forms.ModelChoiceField(
+        queryset=Department.objects.all(),
+        required=False, # Optional, as not all roles need a department
+        widget=forms.Select(attrs={"class": "mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm"}),
+        label="Department"
     )
 
     class Meta(UserChangeForm.Meta):
@@ -150,7 +168,9 @@ class UserUpdateForm(UserChangeForm):
 
         # Populate the role field from the UserProfile instance
         if self.instance and hasattr(self.instance, "profile"):
-            self.fields["role"].initial = self.instance.profile.role
+            profile = self.instance.profile
+            self.fields["role"].initial = profile.role
+            self.fields["department"].initial = profile.department
 
         # Remove password-related fields as they are handled separately by Django's auth forms
         if "password" in self.fields:
@@ -189,6 +209,6 @@ class UserUpdateForm(UserChangeForm):
             user.save()
             # Update UserProfile instance
             user_profile, created = UserProfile.objects.update_or_create(
-                user=user, defaults={"role": self.cleaned_data["role"]}
+                user=user, defaults={"role": self.cleaned_data["role"], "department": self.cleaned_data.get("department")}
             )
         return user

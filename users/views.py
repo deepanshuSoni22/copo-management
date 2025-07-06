@@ -8,6 +8,7 @@ from django.contrib import messages  # For displaying feedback messages
 from django.contrib.auth.models import User  # Import Django's User model
 from .models import UserProfile, UserRole  # Import your custom models and choices
 from .forms import UserCreateForm, UserUpdateForm  # Import your new custom forms
+from academics.views import is_admin, is_hod, is_admin_or_hod
 
 
 # --- Existing Login/Logout Views ---
@@ -34,42 +35,64 @@ def is_admin(user):
 
 
 @login_required
-@user_passes_test(is_admin, login_url="/accounts/login/")  # Only Admin can manage users
+@user_passes_test(is_admin_or_hod, login_url='/accounts/login/') # Use your existing permission check
 def user_list(request):
-    users = User.objects.all().select_related("profile").order_by("username")
-    # Can filter by role here if desired:
-    # role_filter = request.GET.get('role')
-    # if role_filter:
-    #    users = users.filter(profile__role=role_filter)
+    # --- START OF NEW LOGIC ---
+    # Determine the base queryset based on the user's role
+    if is_admin(request.user):
+        # Admins can see all users
+        users = User.objects.all().select_related('profile')
+    elif is_hod(request.user):
+        # HODs can only see users in their own department
+        hod_department = request.user.profile.department
+        users = User.objects.filter(profile__department=hod_department).select_related('profile')
+    else:
+        # This case should not be reached due to the decorator, but it's a safe fallback
+        users = User.objects.none()
+    # --- END OF NEW LOGIC ---
+    
+    # Existing role filtering logic will now apply to the pre-filtered queryset
+    selected_role = request.GET.get('role', '')
+    if selected_role and selected_role != 'ALL':
+        users = users.filter(profile__role=selected_role)
+    
     context = {
-        "users": users,
-        "form_title": "User Management",
-        "roles": UserRole.choices,  # Pass roles for filter options if needed
+        'users': users.order_by('username'),
+        'form_title': 'User Management',
+        'user_roles': UserRole.choices,
+        'selected_role': selected_role,
     }
-    return render(request, "users/user_list.html", context)
+    return render(request, 'users/user_list.html', context)
 
 
 @login_required
-@user_passes_test(is_admin, login_url="/accounts/login/")  # Only Admin
+@user_passes_test(is_admin, login_url='/accounts/login/')
 def user_create(request):
-    if request.method == "POST":
+    # NEW: Determine the default role from GET parameter or default to Student
+    initial_role = request.GET.get('role', UserRole.STUDENT) # Default to STUDENT
+
+    if request.method == 'POST':
         form = UserCreateForm(request.POST)
         if form.is_valid():
             user = form.save()
-            messages.success(
-                request,
-                f"User '{user.username}' created successfully with role '{user.profile.get_role_display()}'!",
-            )
-            return redirect("user_list")
+            messages.success(request, f"User '{user.username}' created successfully with role '{user.profile.get_role_display()}'!")
+            return redirect('user_list')
         else:
-            messages.error(request, "Please correct the errors below.")
+            messages.error(request, 'Please correct the errors below.')
     else:
-        form = UserCreateForm()
+        # Pass initial role to the form
+        form = UserCreateForm(initial={'role': initial_role}) # Pre-set the role in the form
+    
+    # NEW: Dynamically set the form_title based on the role
+    role_display_name = dict(UserRole.choices).get(initial_role, 'User') # Get readable role name
+    form_heading = f'Create {role_display_name}'
+
     context = {
-        "form": form,
-        "form_title": "Create New User",
+        'form': form,
+        'form_title': form_heading, # Use dynamic heading
+        'initial_role': initial_role, # Pass to template for locking/display
     }
-    return render(request, "users/user_form.html", context)
+    return render(request, 'users/user_form.html', context)
 
 
 @login_required
