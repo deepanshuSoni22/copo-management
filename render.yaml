@@ -9,8 +9,13 @@ services:
       python manage.py migrate
     startCommand: >
       bash -c "
-        python manage.py createsuperuser --noinput &&
-        gunicorn copo_management_system.wsgi"
+        python manage.py shell -c '
+from django.contrib.auth import get_user_model;
+User = get_user_model();
+if not User.objects.filter(username=\"${DJANGO_SUPERUSER_USERNAME}\").exists():
+    User.objects.create_superuser(\"${DJANGO_SUPERUSER_USERNAME}\", \"${DJANGO_SUPERUSER_EMAIL}\", \"${DJANGO_SUPERUSER_PASSWORD}\")' &&
+        gunicorn copo_management_system.wsgi
+      "
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -23,11 +28,11 @@ services:
       - key: ALLOWED_HOSTS
         value: copo-app.onrender.com
       - key: DJANGO_SUPERUSER_USERNAME
-        value: admin              # Change if needed
+        value: admin
       - key: DJANGO_SUPERUSER_EMAIL
-        value: admin@mail.com  # Change if needed
+        value: admin@mail.com
       - key: DJANGO_SUPERUSER_PASSWORD
-        value: admin@123    # Change this securely
+        value: admin@123
 
 databases:
   - name: copo-db
