@@ -69,7 +69,8 @@ def user_list(request):
 @user_passes_test(is_admin, login_url='/accounts/login/')
 def user_create(request):
     # NEW: Determine the default role from GET parameter or default to Student
-    initial_role = request.GET.get('role', UserRole.STUDENT) # Default to STUDENT
+    # initial_role = request.GET.get('role', UserRole.STUDENT) # Default to STUDENT
+    initial_role = 'User'
 
     if request.method == 'POST':
         form = UserCreateForm(request.POST)
