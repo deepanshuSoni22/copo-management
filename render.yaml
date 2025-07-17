@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: copo-app
+    env: python
+    plan: free
+    buildCommand: "pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate"
+    startCommand: "gunicorn copo_management_system.wsgi"
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: copo-db
+          property: connectionString
+      - key: SECRET_KEY
+        value: django-insecure-*xd2bmo0awi2l9i3&lsc1)lp_9a_p^5lb^$w-=g@%9g^8f)0%h
+      - key: DEBUG
+        value: "False"
+      - key: ALLOWED_HOSTS
+        value: copo-app.onrender.com
+
+databases:
+  - name: copo-db
+    plan: free

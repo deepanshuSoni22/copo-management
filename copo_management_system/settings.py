@@ -1,4 +1,5 @@
 import os
+import dj_database_url
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -9,15 +10,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-*xd2bmo0awi2l9i3&lsc1)lp_9a_p^5lb^$w-=g@%9g^8f)0%h'
+SECRET_KEY = os.getenv("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv("DEBUG", "False") == "True"
 
-ALLOWED_HOSTS = [
-    '127.0.0.1',
-]
-
+ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "127.0.0.1").split(",")
 
 # Application definition
 
@@ -70,15 +68,9 @@ WSGI_APPLICATION = 'copo_management_system.wsgi.application'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql_psycopg2', # Or 'django.db.backends.postgresql'
-        'NAME': 'copo_db2',                                # Your database name (e.g., copo_db)
-        'USER': 'django_user',                            # Your PostgreSQL username (often 'postgres')
-        'PASSWORD': 'deepanshu22',                    # Your PostgreSQL password
-        'HOST': 'localhost',                               # Or your database host (e.g., '127.0.0.1')
-        'PORT': '5432',                                        # Default port is 5432, leave empty for default
-    }
+    'default': dj_database_url.config(default=os.getenv("DATABASE_URL"))
 }
+
 
 
 # Password validation
