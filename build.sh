@@ -14,14 +14,29 @@ echo "Running database migrations..."
 python manage.py migrate
 echo "Database migrations completed."
 
-# Create a superuser if one doesn't already exist.
-# This uses the DJANGO_SUPERUSER_USERNAME, DJANGO_SUPERUSER_EMAIL,
-# and DJANGO_SUPERUSER_PASSWORD environment variables you set on Render.
-# The --noinput flag makes it non-interactive.
-# The '|| true' ensures the script doesn't fail if the user already exists.
-echo "Attempting to create or verify superuser using createsuperuser --noinput..."
-python manage.py createsuperuser --noinput || true
-echo "Superuser creation/verification step completed."
+# Ensure the superuser has correct permissions (even if it already exists)
+echo "Ensuring superuser 'admin' has staff and superuser permissions..."
+python manage.py shell <<EOF
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+try:
+    user = User.objects.get(username='${DJANGO_SUPERUSER_USERNAME}')
+    if not user.is_staff or not user.is_superuser:
+        user.is_staff = True
+        user.is_superuser = True
+        user.save()
+        print(f"User '{user.username}' permissions updated to staff and superuser.")
+    else:
+        print(f"User '{user.username}' already has staff and superuser permissions.")
+except User.DoesNotExist:
+    # If user doesn't exist, create it.
+    User.objects.create_superuser('${DJANGO_SUPERUSER_USERNAME}', '${DJANGO_SUPERUSER_EMAIL}', '${DJANGO_SUPERUSER_PASSWORD}')
+    print("Superuser created as it did not exist.")
+except Exception as e:
+    print(f"An error occurred during superuser update/creation: {e}")
+EOF
+echo "Superuser permissions check/update completed."
 
 # Collect static files
 echo "Collecting static files..."
