@@ -72,7 +72,7 @@ WSGI_APPLICATION = 'copo_management_system.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2', # Or 'django.db.backends.postgresql'
-        'NAME': 'copo_db2',                                # Your database name (e.g., copo_db)
+        'NAME': 'copo_db',                                # Your database name (e.g., copo_db)
         'USER': 'django_user',                            # Your PostgreSQL username (often 'postgres')
         'PASSWORD': 'deepanshu22',                    # Your PostgreSQL password
         'HOST': 'localhost',                               # Or your database host (e.g., '127.0.0.1')
