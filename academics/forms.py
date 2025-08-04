@@ -261,22 +261,19 @@ class ProgramOutcomeForm(forms.ModelForm):
     
     def __init__(self, *args, **kwargs):
         # Pop the user object passed from the view
-        user = kwargs.pop('user', None)
+        self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
 
         # If the user is an HOD, pre-fill and disable the department field
-        if user and hasattr(user, 'profile') and user.profile.role == 'HOD':
-            hod_department = user.profile.department
-            if hod_department:
-                self.fields['department'].queryset = Department.objects.filter(pk=hod_department.pk)
-                self.fields['department'].initial = hod_department
-                self.fields['department'].disabled = True
+        if self.user and hasattr(self.user, 'profile') and self.user.profile.role == 'HOD':
+            hod_dept = self.user.profile.department
+            self.fields['department'].queryset = Department.objects.filter(pk=hod_dept.pk)
+            self.fields['department'].initial = hod_dept
     
     def clean(self):
         cleaned_data = super().clean()
-        # If the department field was disabled, re-insert its value for saving
-        if self.fields['department'].disabled:
-            cleaned_data['department'] = self.initial.get('department')
+        if self.user and hasattr(self.user, 'profile') and self.user.profile.role == 'HOD':
+            cleaned_data['department'] = self.user.profile.department
         return cleaned_data
 
 
