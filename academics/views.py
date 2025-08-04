@@ -778,7 +778,7 @@ def program_outcome_list(request):
 @user_passes_test(is_admin_or_hod, login_url="/accounts/login/")
 def program_outcome_create(request):
     if request.method == "POST":
-        form = ProgramOutcomeForm(request.POST, user=request.user)
+        form = ProgramOutcomeForm(request.POST or None, user=request.user)
         if form.is_valid():
             form.save() # The form's clean() method handles HOD logic
             messages.success(request, "Program Outcome created successfully!")
