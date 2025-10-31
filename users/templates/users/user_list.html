@@ -10,7 +10,7 @@
             <h1 class="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-800 flex-shrink-0">User Management</h1> 
             
             {# NEW: Role Selection Dropdown and Add Button #} 
-            <div class="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-3 flex-shrink-0"> 
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center space-y-3 sm:space-y-0 sm:space-x-3 flex-shrink-0"> 
                 <form id="role-filter-form" method="get" class="w-full sm:w-auto"> 
                     <label for="role-select" class="sr-only">Filter by Role</label> 
                     <select name="role" id="role-select" 
@@ -34,6 +34,29 @@
             </div> 
             
         </div>
+
+        {# Bulk Upload Button Section - Only visible to ADMIN #}
+        {% if request.user.profile.role == 'ADMIN' %}
+        <div class="mb-4 sm:mb-6">
+            <div class="flex flex-col sm:flex-row gap-3">
+                <a href="{% url 'bulk_user_upload' %}" 
+                   class="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2.5 bg-green-600 text-white-pure rounded-lg font-semibold text-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 shadow-sm transition duration-150 ease-in-out">
+                    <svg class="w-5 h-5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                    </svg>
+                    <span class="whitespace-nowrap">Bulk Upload Users</span>
+                </a>
+                
+                <a href="{% url 'download_sample_csv' %}" 
+                   class="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2.5 bg-blue-600 text-white-pure rounded-lg font-semibold text-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 shadow-sm transition duration-150 ease-in-out">
+                    <svg class="w-5 h-5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    <span class="whitespace-nowrap">Download Sample CSV</span>
+                </a>
+            </div>
+        </div>
+        {% endif %}
 
         {% if users %}
             {# Desktop Table View - Hidden on mobile/small tablet #}

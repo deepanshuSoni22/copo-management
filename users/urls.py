@@ -13,4 +13,9 @@ urlpatterns = [
     path('management/create/', views.user_create, name='user_create'),
     path('management/<int:pk>/update/', views.user_update, name='user_update'),
     path('management/<int:pk>/delete/', views.user_delete, name='user_delete'),
+
+    # Bulk Upload URLs
+    path('management/bulk-upload/', views.bulk_user_upload, name='bulk_user_upload'),
+    path('management/bulk-upload/preview/', views.bulk_user_preview, name='bulk_user_preview'),
+    path('management/download-sample-csv/', views.download_sample_csv, name='download_sample_csv'),
 ]
