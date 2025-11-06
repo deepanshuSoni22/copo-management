@@ -6,6 +6,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages  # For displaying feedback messages
 from django.views.generic import View  # For class-based views if preferred
 from django.http import JsonResponse # <-- Add this import at the top
+from django.core.exceptions import ValidationError  # Add this import
 from .forms import (
     AcademicYearForm,
     DepartmentForm,
@@ -1380,9 +1381,18 @@ def assessment_delete(request, pk):
 @login_required
 @user_passes_test(is_admin_or_hod_or_faculty, login_url="/accounts/login/")
 def student_mark_entry(request, assessment_pk):
+    """
+    Enhanced student mark entry with bulk operations and real-time validation.
+    
+    Features:
+    - Bulk fill and clear operations
+    - Real-time validation feedback
+    - Progress tracking
+    - Search and filter functionality
+    """
     assessment = get_object_or_404(Assessment, pk=assessment_pk)
 
-    # Permission check (existing code)
+    # Permission check
     if is_faculty(request.user) and not is_admin_or_hod(request.user):
         if assessment.course not in request.user.profile.taught_courses.all():
             messages.error(
@@ -1391,92 +1401,138 @@ def student_mark_entry(request, assessment_pk):
             )
             return redirect("assessment_list")
 
-    # Get all students (users with the 'STUDENT' role) for marks entry for now.
-    enrolled_students = User.objects.filter(profile__role="STUDENT").order_by(
-        "username"
-    )
+    # Get enrolled students for the course (more efficient)
+    enrolled_students = User.objects.filter(
+        profile__role="STUDENT",
+        profile__enrolled_courses=assessment.course
+    ).select_related('profile').order_by('username')
+    
+    # If no students enrolled in course, show all students as fallback
+    if not enrolled_students.exists():
+        enrolled_students = User.objects.filter(
+            profile__role="STUDENT"
+        ).select_related('profile').order_by('username')
 
-    # Initialize the formset (for both GET and POST)
+    # Calculate statistics
+    total_students = enrolled_students.count()
+    existing_marks = StudentMark.objects.filter(
+        assessment=assessment,
+        student__in=enrolled_students
+    ).select_related('student')
+    marks_entered = existing_marks.count()
+    marks_pending = total_students - marks_entered
+    
+    # Calculate average if marks exist
+    average_marks = None
+    if existing_marks.exists():
+        from django.db.models import Avg
+        avg = existing_marks.aggregate(Avg('marks_obtained'))['marks_obtained__avg']
+        average_marks = round(avg, 2) if avg else None
+
+    # Initialize the formset
     form_data = []
     for student in enrolled_students:
         existing_mark = StudentMark.objects.filter(
             assessment=assessment, student=student
         ).first()
-        form_data.append(
-            {
-                "id": existing_mark.id if existing_mark else None,
-                "student": student.id,
-                "marks_obtained": existing_mark.marks_obtained if existing_mark else "",
-            }
-        )
-
-    MarkFormSet = StudentMarkFormSet(initial=form_data, prefix="marks")
+        form_data.append({
+            "id": existing_mark.id if existing_mark else None,
+            "student": student.id,
+            "marks_obtained": existing_mark.marks_obtained if existing_mark else "",
+        })
 
     if request.method == "POST":
-        formset = StudentMarkFormSet(
-            request.POST, prefix="marks"
-        )  # Re-initialize with POST data
-        if formset.is_valid():
-            # Save the formset (existing custom loop)
-            for form in formset:
-                marks_obtained = form.cleaned_data.get("marks_obtained")
-                student = form.cleaned_data.get("student")
-
-                if student and marks_obtained is not None:
-                    mark_instance = StudentMark.objects.filter(
-                        assessment=assessment, student=student
-                    ).first()
-
-                    if mark_instance:
-                        mark_instance.marks_obtained = marks_obtained
-                        mark_instance.save()
-                    else:
-                        StudentMark.objects.create(
-                            assessment=assessment,
-                            student=student,
-                            marks_obtained=marks_obtained,
-                        )
-            messages.success(
-                request, f"Student marks for {assessment.name} updated successfully!"
-            )
-            return redirect("assessment_list")
-        else:
-            # --- DEBUGGING LINES START ---
-            print("====================================")
-            print("Student Mark Formset is NOT valid!")
-            print(
-                "Overall Formset Errors:", formset.non_form_errors()
-            )  # General formset errors
-            for i, form in enumerate(formset):
-                if form.errors:  # Check if individual form has errors
-                    # Access the student directly from the current form being processed for better context
-                    student_obj_for_error = None
-                    try:
-                        # Attempt to get the student object based on submitted data or instance
-                        if "student" in form.cleaned_data:
-                            student_obj_for_error = User.objects.get(
-                                pk=form.cleaned_data["student"].pk
-                            )
-                        elif form.instance and form.instance.student:
-                            student_obj_for_error = form.instance.student
-                    except User.DoesNotExist:
-                        pass  # Ignore if student not found (shouldn't happen)
-
-                    print(
-                        f"Form {i} Errors (for Student: {student_obj_for_error.username if student_obj_for_error else 'N/A'}):",
-                        form.errors,
-                    )
-            print("====================================")
-            # --- DEBUGGING LINES END ---
-            messages.error(request, "Please correct the errors in the marks form.")
-    else:
-        # For GET requests, re-initialize the formset for display
         formset = StudentMarkFormSet(request.POST, prefix="marks")
+        
+        if formset.is_valid():
+            saved_count = 0
+            updated_count = 0
+            errors = []
+            
+            # Process each form in a transaction
+            from django.db import transaction
+            try:
+                with transaction.atomic():
+                    for form in formset:
+                        marks_obtained = form.cleaned_data.get("marks_obtained")
+                        student = form.cleaned_data.get("student")
+
+                        if student and marks_obtained is not None:
+                            # Validate marks don't exceed max
+                            if marks_obtained > assessment.max_marks:
+                                errors.append(
+                                    f"{student.username}: Marks ({marks_obtained}) exceed maximum ({assessment.max_marks})"
+                                )
+                                continue
+                            
+                            mark_instance, created = StudentMark.objects.update_or_create(
+                                assessment=assessment,
+                                student=student,
+                                defaults={'marks_obtained': marks_obtained}
+                            )
+                            
+                            if created:
+                                saved_count += 1
+                            else:
+                                updated_count += 1
+                    
+                    if errors:
+                        # Rollback transaction if there are errors
+                        raise ValidationError(errors)
+                    
+                    success_msg = f"Successfully processed {saved_count + updated_count} marks"
+                    if saved_count:
+                        success_msg += f" ({saved_count} new"
+                    if updated_count:
+                        success_msg += f", {updated_count} updated)"
+                    else:
+                        success_msg += ")"
+                    
+                    messages.success(request, success_msg)
+                    return redirect("assessment_list")
+                    
+            except ValidationError as e:
+                for error in e.messages:
+                    messages.error(request, error)
+        else:
+            # Improved error reporting
+            error_count = 0
+            for i, form in enumerate(formset):
+                if form.errors:
+                    error_count += 1
+                    student_id = form.cleaned_data.get('student') if 'student' in form.cleaned_data else None
+                    if student_id:
+                        student = User.objects.filter(pk=student_id).first()
+                        student_name = student.username if student else f"Student #{i+1}"
+                    else:
+                        student_name = f"Student #{i+1}"
+                    
+                    for field, errors in form.errors.items():
+                        for error in errors:
+                            messages.error(request, f"{student_name}: {error}")
+            
+            if formset.non_form_errors():
+                for error in formset.non_form_errors():
+                    messages.error(request, f"Form error: {error}")
+            
+            if error_count == 0 and not formset.non_form_errors():
+                messages.error(request, "Please correct the errors in the form.")
+        
+        # Re-create formset with POST data for display
+        MarkFormSet = formset
+    else:
+        # For GET requests, create formset with initial data
+        MarkFormSet = StudentMarkFormSet(initial=form_data, prefix="marks")
 
     context = {
         "assessment": assessment,
-        "formset": MarkFormSet,  # Pass the initialized formset (either empty or with POST data)
+        "formset": MarkFormSet,
         "enrolled_students": enrolled_students,
+        "total_students": total_students,
+        "marks_entered": marks_entered,
+        "marks_pending": marks_pending,
+        "average_marks": average_marks,
+        "completion_percentage": round((marks_entered / total_students * 100), 1) if total_students > 0 else 0,
     }
     return render(request, "academics/student_mark_entry_form.html", context)
 

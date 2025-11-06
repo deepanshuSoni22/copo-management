@@ -5,6 +5,29 @@ Django-based outcome-based education (OBE) system for managing Course Outcomes (
 
 ## Architecture & Data Model
 
+### Three-Tier Architecture (NEW - Phase 2)
+The application now follows a clean three-tier architecture:
+1. **Presentation Layer** (`academics/views/`) - HTTP request/response, form handling, template rendering
+2. **Business Logic Layer** (`academics/services/`) - Domain logic, calculations, validations
+3. **Data Layer** (`academics/models.py`) - Database models, simple data operations
+
+**Service Layer**: Always use service classes for complex business logic:
+```python
+from academics.services import AttainmentService, CourseService, EnrollmentService, OutcomeService
+
+# Example: Calculate CO attainment in a view
+results = AttainmentService.calculate_co_attainment_for_course(course, academic_year)
+
+# Example: Get user's courses with role-based filtering
+courses = CourseService.get_courses_for_user(request.user)
+
+# Example: Bulk enroll students
+results = EnrollmentService.bulk_enroll_students(student_profiles, course)
+
+# Example: Validate CO-PO mapping completeness
+validation = OutcomeService.validate_copo_mapping_completeness(course)
+```
+
 ### Core Entity Hierarchy
 ```
 AcademicYear → AcademicDepartment → Semester → Course → CourseOutcome
@@ -99,6 +122,44 @@ Function: `calculate_po_attainment_for_department(department_obj, academic_year_
 ## Development Workflow
 
 ### Database
+- **PostgreSQL** (psycopg2-binary 2.9.10)
+- Database: `copo_db`, User: `django_user` (see settings.py)
+- Always run migrations after model changes: `python manage.py makemigrations && python manage.py migrate`
+
+### Database Optimization
+All major models include database indexes for optimal query performance:
+- **Composite indexes**: Common query patterns (e.g., `course + academic_year`)
+- **Foreign key indexes**: Fast relationship lookups
+- **Date/timestamp indexes**: Efficient sorting and filtering
+- Models with indexes: ProgramOutcome, Course, CourseOutcome, COPOMapping, Assessment, StudentMark, CourseOutcomeAttainment, ProgramOutcomeAttainment
+
+### Documentation Standards
+All models include comprehensive Google-style docstrings:
+```python
+class ModelName(models.Model):
+    """
+    Brief description of the model's purpose.
+    
+    Detailed explanation of what this model represents and how it's used
+    in the system.
+    
+    Attributes:
+        field_name (Type): Description of the field
+        another_field (Type): Description with constraints
+    
+    Constraints:
+        Describe unique_together, validation rules, etc.
+    
+    Calculation Impact: (if relevant)
+        How this model affects calculations or reports.
+    
+    Related:
+        Mention related models and relationships.
+    """
+```
+When creating new models or modifying existing ones, always include complete docstrings following this format.
+
+### Key Commands
 - **PostgreSQL** (psycopg2-binary 2.9.10)
 - Database: `copo_db`, User: `django_user` (see settings.py)
 - Always run migrations after model changes: `python manage.py makemigrations && python manage.py migrate`
@@ -201,7 +262,15 @@ Prefix patterns: `/academics/` for academic features, `/accounts/` for auth
 
 ## Key Files Reference
 - **Models**: `academics/models.py` (700+ lines, 25+ models)
-- **Views**: `academics/views.py` (2474 lines, function-based views)
+- **Views**: `academics/views/` (modular package structure)
+  - `views/__init__.py` - Package entry point with backward compatibility
+  - `views/permission_helpers.py` - Role-based access control functions
+  - `views_legacy.py` - Original monolithic views file (2530 lines, being phased out)
+- **Services**: `academics/services/` (business logic layer)
+  - `services/attainment_service.py` - CO/PO attainment calculations (373 lines)
+  - `services/course_service.py` - Course management logic (261 lines)
+  - `services/enrollment_service.py` - Student enrollment operations (389 lines)
+  - `services/outcome_service.py` - CO/PO/mapping management (427 lines)
 - **Forms**: `academics/forms.py` (1124 lines)
 - **URLs**: `academics/urls.py` (75+ routes)
 - **Settings**: `copo_management_system/settings.py`
@@ -213,6 +282,68 @@ Two helper APIs for dynamic dropdowns:
 - `GET /academics/api/get-courses-by-department/<department_id>/` → JSON list of courses
 
 ## When Adding Features
+1. **Business Logic First**: Implement in appropriate service class (`services/`)
+2. **Role Permissions**: Use permission helpers from `views/permission_helpers.py`
+3. **Thin Views**: Views should only handle HTTP, call services, render templates
+4. Scope querysets by department/courses if HOD/Faculty (use service methods)
+5. Add Tailwind classes to match existing forms
+6. Use `@transaction.atomic` for multi-model updates
+7. Add URL to `academics/urls.py` with underscore naming
+8. Update sidebar in `base.html` if adding navigation item
+9. Log significant actions using `audit_utils.log_action()`
+10. Add validation using functions from `validation_utils.py`
+11. Include docstrings for all new functions
+
+## Service Layer Best Practices (Phase 2)
+
+### When to Use Services
+- Complex calculations (e.g., attainment calculations)
+- Multi-step business logic
+- Database queries with complex filtering/aggregation
+- Operations involving multiple models
+- Bulk operations
+- Permission checking beyond simple role checks
+- Data export/import logic
+
+### Service Method Structure
+```python
+@staticmethod
+def method_name(param1, param2):
+    """
+    Brief description of what the method does.
+    
+    Args:
+        param1 (Type): Description
+        param2 (Type): Description
+    
+    Returns:
+        dict/QuerySet/Model: Description of return value
+    
+    Raises:
+        ValidationError: When validation fails
+    """
+    # Implementation
+    pass
+```
+
+### View + Service Pattern
+```python
+# In views
+from django.contrib.auth.decorators import login_required
+from academics.services import CourseService
+from academics.views.permission_helpers import is_admin_or_hod
+
+@login_required
+@user_passes_test(is_admin_or_hod)
+def course_list(request):
+    # View handles HTTP concerns
+    courses = CourseService.get_courses_for_user(request.user)  # Service handles logic
+    
+    context = {'courses': courses}
+    return render(request, 'academics/course_list.html', context)
+```
+
+## When Adding Features (Updated)
 1. Check role permissions FIRST
 2. Scope querysets by department/courses if HOD/Faculty
 3. Use existing helper functions (`is_admin()`, etc.)
