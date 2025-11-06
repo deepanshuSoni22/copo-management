@@ -670,6 +670,76 @@ class Submission(models.Model):
         ordering = ['-submitted_at']
 
 
+class AuditLog(models.Model):
+    """
+    Tracks all significant user activities across the system for accountability and debugging.
+    Logs create, update, and delete operations on critical models.
+    """
+    ACTION_CHOICES = [
+        ('CREATE', 'Create'),
+        ('UPDATE', 'Update'),
+        ('DELETE', 'Delete'),
+        ('CALCULATE', 'Calculate'),
+        ('EXPORT', 'Export'),
+        ('IMPORT', 'Import'),
+    ]
+    
+    user = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='audit_logs',
+        help_text="User who performed the action"
+    )
+    action = models.CharField(
+        max_length=20,
+        choices=ACTION_CHOICES,
+        help_text="Type of action performed"
+    )
+    model_name = models.CharField(
+        max_length=100,
+        help_text="Name of the model affected (e.g., 'Course', 'Assessment')"
+    )
+    object_id = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text="ID of the affected object"
+    )
+    object_repr = models.CharField(
+        max_length=500,
+        blank=True,
+        help_text="String representation of the affected object"
+    )
+    changes = models.TextField(
+        blank=True,
+        null=True,
+        help_text="JSON string of changes made (for UPDATE actions)"
+    )
+    ip_address = models.GenericIPAddressField(
+        null=True,
+        blank=True,
+        help_text="IP address of the user"
+    )
+    timestamp = models.DateTimeField(
+        auto_now_add=True,
+        db_index=True,
+        help_text="When the action occurred"
+    )
+    
+    def __str__(self):
+        return f"{self.user.username if self.user else 'System'} - {self.action} {self.model_name} at {self.timestamp}"
+    
+    class Meta:
+        verbose_name = "Audit Log"
+        verbose_name_plural = "Audit Logs"
+        ordering = ['-timestamp']
+        indexes = [
+            models.Index(fields=['-timestamp', 'user']),
+            models.Index(fields=['model_name', 'action']),
+        ]
+
+
 
 
 

@@ -1,5 +1,6 @@
 # academics/forms.py
 from django import forms
+from django.core.exceptions import ValidationError
 from .models import (
     AcademicYear,
     Department,
@@ -272,8 +273,49 @@ class ProgramOutcomeForm(forms.ModelForm):
     
     def clean(self):
         cleaned_data = super().clean()
+        department = cleaned_data.get('department')
+        code = cleaned_data.get('code')
+        description = cleaned_data.get('description')
+        
+        # If HOD, ensure department is their own
         if self.user and hasattr(self.user, 'profile') and self.user.profile.role == 'HOD':
             cleaned_data['department'] = self.user.profile.department
+            department = cleaned_data['department']
+        
+        # Validate PO code format
+        if code:
+            code_upper = code.upper()
+            if not code_upper.startswith('PO') and not code_upper.startswith('PSO'):
+                self.add_error("code", "Program Outcome code must start with 'PO' or 'PSO' (e.g., PO1, PSO1).")
+            else:
+                # Extract the prefix (PO or PSO)
+                if code_upper.startswith('PSO'):
+                    prefix = 'PSO'
+                    suffix = code_upper[3:]
+                else:
+                    prefix = 'PO'
+                    suffix = code_upper[2:]
+                
+                if not suffix.isdigit():
+                    self.add_error("code", f"{prefix} code must be followed by a number (e.g., {prefix}1, {prefix}2).")
+        
+        # Check for duplicate PO code in the same department
+        if department and code:
+            existing = ProgramOutcome.objects.filter(
+                department=department,
+                code__iexact=code
+            ).exclude(pk=self.instance.pk)
+            
+            if existing.exists():
+                self.add_error("code", 
+                    f"A Program Outcome with code '{code}' already exists for {department.name}. "
+                    "Please use a unique code."
+                )
+        
+        # Validate description length
+        if description and len(description.strip()) < 15:
+            self.add_error("description", "Program Outcome description must be at least 15 characters long.")
+        
         return cleaned_data
 
 
@@ -426,15 +468,41 @@ class CourseOutcomeForm(forms.ModelForm):
         cleaned_data = super().clean()
         course = cleaned_data.get("course")
         code = cleaned_data.get("code")
+        description = cleaned_data.get("description")
+
+        # Validate outcome code format
+        if code:
+            code_upper = code.upper()
+            if not code_upper.startswith('CO'):
+                self.add_error("code", "Course Outcome code must start with 'CO' (e.g., CO1, CO2).")
+            elif not code_upper[2:].isdigit():
+                self.add_error("code", "Course Outcome code must be 'CO' followed by a number (e.g., CO1, CO2).")
 
         # Custom validation for unique_together (though model handles it, this provides better feedback)
         if course and code:
             if (
-                CourseOutcome.objects.filter(course=course, code=code)
+                CourseOutcome.objects.filter(course=course, code__iexact=code)  # Case-insensitive
                 .exclude(pk=self.instance.pk)
                 .exists()
             ):
-                self.add_error("code", "This code is already used for this course.")
+                self.add_error("code", f"A Course Outcome with code '{code}' already exists for this course. Please use a unique code.")
+        
+        # Validate description is not empty and has minimum length
+        if description and len(description.strip()) < 10:
+            self.add_error("description", "Course Outcome description must be at least 10 characters long.")
+        
+        # Validate at least one RBT level is selected
+        rbt_levels = [
+            cleaned_data.get('rbt_level_1'),
+            cleaned_data.get('rbt_level_2'),
+            cleaned_data.get('rbt_level_3'),
+            cleaned_data.get('rbt_level_4'),
+            cleaned_data.get('rbt_level_5'),
+            cleaned_data.get('rbt_level_6'),
+        ]
+        if not any(rbt_levels):
+            self.add_error(None, "Please select at least one Bloom's Taxonomy level for this Course Outcome.")
+        
         return cleaned_data
     
 CourseOutcomeFormSet = inlineformset_factory(
@@ -621,6 +689,26 @@ class StudentMarkForm(forms.ModelForm):
     class Meta:
         model = StudentMark
         fields = ["id", "student", "marks_obtained"]
+    
+    def clean_marks_obtained(self):
+        """Validate marks_obtained is non-negative and reasonable."""
+        marks = self.cleaned_data.get('marks_obtained')
+        
+        if marks is None:
+            raise ValidationError("Marks obtained cannot be empty.")
+        
+        if marks < 0:
+            raise ValidationError("Marks obtained cannot be negative.")
+        
+        # Get the assessment's max_marks if available
+        if hasattr(self, 'assessment'):
+            max_marks = self.assessment.max_marks
+            if marks > max_marks:
+                raise ValidationError(
+                    f"Marks obtained ({marks}) cannot exceed maximum marks ({max_marks})."
+                )
+        
+        return marks
 
 
 # Formset factory for managing multiple StudentMark instances for one Assessment
