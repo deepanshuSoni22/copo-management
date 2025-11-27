@@ -1,10 +1,12 @@
 # users/forms.py
+import csv
+import io
 from django import forms
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import UserCreationForm, UserChangeForm
+from django.core.exceptions import ValidationError
 from .models import UserProfile, UserRole  # Import your custom models
 from academics.models import Department  # <-- Make sure to import Department
-
 
 
 class UserProfileForm(forms.ModelForm):
@@ -212,3 +214,101 @@ class UserUpdateForm(UserChangeForm):
                 user=user, defaults={"role": self.cleaned_data["role"], "department": self.cleaned_data.get("department")}
             )
         return user
+
+
+class BulkUserUploadForm(forms.Form):
+    """
+    Form for uploading a CSV file to create multiple users at once.
+    Expected CSV columns: username, first_name, last_name, email, role, department_id, password
+    """
+    csv_file = forms.FileField(
+        label='CSV File',
+        help_text='Upload a CSV file with columns: username, first_name, last_name, email, role, department_id, password',
+        widget=forms.FileInput(attrs={
+            'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500',
+            'accept': '.csv'
+        })
+    )
+    
+    def clean_csv_file(self):
+        csv_file = self.cleaned_data['csv_file']
+        
+        # Check file extension
+        if not csv_file.name.endswith('.csv'):
+            raise ValidationError('File must be a CSV file.')
+        
+        # Check file size (max 5MB)
+        if csv_file.size > 5 * 1024 * 1024:
+            raise ValidationError('File size must not exceed 5MB.')
+        
+        return csv_file
+    
+    def parse_csv(self):
+        """
+        Parse the CSV file and return a list of user data dictionaries.
+        Also returns a list of errors if any validation fails.
+        """
+        csv_file = self.cleaned_data['csv_file']
+        decoded_file = csv_file.read().decode('utf-8')
+        io_string = io.StringIO(decoded_file)
+        reader = csv.DictReader(io_string)
+        
+        users_data = []
+        errors = []
+        
+        required_columns = ['username', 'first_name', 'last_name', 'email', 'role']
+        
+        # Check if all required columns are present
+        if not all(col in reader.fieldnames for col in required_columns):
+            errors.append(f"CSV must contain these columns: {', '.join(required_columns)}")
+            return users_data, errors
+        
+        for row_num, row in enumerate(reader, start=2):  # Start at 2 to account for header
+            # Validate username
+            username = row.get('username', '').strip()
+            if not username:
+                errors.append(f"Row {row_num}: Username is required")
+                continue
+            
+            if User.objects.filter(username=username).exists():
+                errors.append(f"Row {row_num}: Username '{username}' already exists")
+                continue
+            
+            # Validate email
+            email = row.get('email', '').strip()
+            if email and User.objects.filter(email=email).exists():
+                errors.append(f"Row {row_num}: Email '{email}' already exists")
+                continue
+            
+            # Validate role
+            role = row.get('role', '').strip().upper()
+            if role not in dict(UserRole.choices):
+                errors.append(f"Row {row_num}: Invalid role '{role}'. Must be one of: {', '.join(dict(UserRole.choices).keys())}")
+                continue
+            
+            # Get department (optional)
+            department_id = row.get('department_id', '').strip()
+            department = None
+            if department_id:
+                try:
+                    from academics.models import Department
+                    department = Department.objects.get(id=department_id)
+                except Department.DoesNotExist:
+                    errors.append(f"Row {row_num}: Department with ID '{department_id}' does not exist")
+                    continue
+            
+            # Get password (default to username if not provided)
+            password = row.get('password', '').strip() or username
+            
+            users_data.append({
+                'username': username,
+                'first_name': row.get('first_name', '').strip(),
+                'last_name': row.get('last_name', '').strip(),
+                'email': email,
+                'role': role,
+                'department': department,
+                'password': password,
+                'row_num': row_num
+            })
+        
+        return users_data, errors
