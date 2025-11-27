@@ -38,6 +38,11 @@ except Exception as e:
 EOF
 echo "Superuser permissions check/update completed."
 
+# Backfill user profiles to ensure admin has a UserProfile (needed by views/templates)
+echo "Backfilling UserProfile entries and enforcing ADMIN role for superusers..."
+python manage.py backfill_user_profiles
+echo "Backfill completed."
+
 # Collect static files
 echo "Collecting static files..."
 python manage.py collectstatic --no-input
