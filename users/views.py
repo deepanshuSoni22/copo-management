@@ -230,42 +230,43 @@ def bulk_user_preview(request):
         return redirect('bulk_user_upload')
     
     if request.method == 'POST':
-        # Create users
+        # Create users (isolate errors per user; avoid breaking entire batch)
         created_count = 0
         failed_count = 0
-        
-        with transaction.atomic():
-            for user_data in users_data:
-                try:
-                    # --- FIX: Retrieve Department object from ID ---
-                    department = None
-                    if user_data.get('department_id'):
-                        from academics.models import Department
-                        try:
-                            department = Department.objects.get(id=user_data['department_id'])
-                        except Department.DoesNotExist:
-                            pass  # Department not found, will be None
-                    
-                    # Create user
-                    user = User.objects.create_user(
-                        username=user_data['username'],
-                        email=user_data['email'],
-                        password=user_data['password'],
-                        first_name=user_data['first_name'],
-                        last_name=user_data['last_name']
-                    )
-                    
-                    # Create user profile
-                    UserProfile.objects.create(
-                        user=user,
-                        role=user_data['role'],
-                        department=department  # Use the retrieved Department object
-                    )
-                    
-                    created_count += 1
-                except Exception as e:
-                    failed_count += 1
-                    messages.error(request, f"Failed to create user '{user_data['username']}': {str(e)}")
+
+        for user_data in users_data:
+            try:
+                # --- FIX: Retrieve Department object from ID ---
+                department = None
+                if user_data.get('department_id'):
+                    from academics.models import Department
+                    try:
+                        department = Department.objects.get(id=user_data['department_id'])
+                    except Department.DoesNotExist:
+                        pass  # Department not found, will be None
+                
+                # Create user
+                user = User.objects.create_user(
+                    username=user_data['username'],
+                    email=user_data['email'],
+                    password=user_data['password'],
+                    first_name=user_data['first_name'],
+                    last_name=user_data['last_name']
+                )
+
+                # Idempotent profile creation: works with signals too
+                UserProfile.objects.get_or_create(
+                    user=user,
+                    defaults={
+                        'role': user_data['role'],
+                        'department': department,
+                    }
+                )
+
+                created_count += 1
+            except Exception as e:
+                failed_count += 1
+                messages.error(request, f"Failed to create user '{user_data['username']}': {str(e)}")
         
         # Clear session data
         if 'bulk_users_data' in request.session:

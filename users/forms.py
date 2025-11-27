@@ -218,12 +218,14 @@ class UserUpdateForm(UserChangeForm):
 
 class BulkUserUploadForm(forms.Form):
     """
-    Form for uploading a CSV file to create multiple users at once.
-    Expected CSV columns: username, first_name, last_name, email, role, department_id, password
+        Form for uploading a CSV file to create multiple users at once.
+        Expected CSV columns (flexible):
+            - username, first_name, last_name, email, role, password
+            - department_id (optional) OR department (optional, department name/code)
     """
     csv_file = forms.FileField(
         label='CSV File',
-        help_text='Upload a CSV file with columns: username, first_name, last_name, email, role, department_id, password',
+    help_text='Upload a CSV file with columns: username, first_name, last_name, email, role, [department_id|department], password',
         widget=forms.FileInput(attrs={
             'class': 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500',
             'accept': '.csv'
@@ -255,7 +257,7 @@ class BulkUserUploadForm(forms.Form):
         
         users_data = []
         errors = []
-        
+
         required_columns = ['username', 'first_name', 'last_name', 'email', 'role']
         
         # Check if all required columns are present
@@ -287,15 +289,29 @@ class BulkUserUploadForm(forms.Form):
                 continue
             
             # Get department (optional)
-            department_id = row.get('department_id', '').strip()
+            # Resolve department by ID or by name/code
             department = None
+            from academics.models import Department
+            department_id = row.get('department_id', '').strip()
+            department_name = row.get('department', '').strip()
+
             if department_id:
                 try:
-                    from academics.models import Department
                     department = Department.objects.get(id=department_id)
                 except Department.DoesNotExist:
                     errors.append(f"Row {row_num}: Department with ID '{department_id}' does not exist")
                     continue
+            elif department_name:
+                # Try name first, then code field if model has one
+                try:
+                    department = Department.objects.get(name__iexact=department_name)
+                except Department.DoesNotExist:
+                    # Fallback: try code if exists; if not, report error
+                    try:
+                        department = Department.objects.get(code__iexact=department_name)
+                    except Exception:
+                        errors.append(f"Row {row_num}: Department '{department_name}' not found by name or code")
+                        continue
             
             # Get password (default to username if not provided)
             password = row.get('password', '').strip() or username
