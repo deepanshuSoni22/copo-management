@@ -97,8 +97,14 @@ class UserCreateForm(UserCreationForm):
         user.email = self.cleaned_data["email"]
         if commit:
             user.save()
-            # Create UserProfile instance
-            UserProfile.objects.create(user=user, role=self.cleaned_data["role"], department=self.cleaned_data.get("department"))
+            # FIX: Use get_or_create to work with signals
+            UserProfile.objects.update_or_create(
+                user=user,
+                defaults={
+                    "role": self.cleaned_data["role"],
+                    "department": self.cleaned_data.get("department")
+                }
+            )
         return user
 
 
@@ -302,15 +308,19 @@ class BulkUserUploadForm(forms.Form):
                     errors.append(f"Row {row_num}: Department with ID '{department_id}' does not exist")
                     continue
             elif department_name:
-                # Try name first, then code field if model has one
+                # Try exact name match first, then partial match (starts with)
                 try:
                     department = Department.objects.get(name__iexact=department_name)
                 except Department.DoesNotExist:
-                    # Fallback: try code if exists; if not, report error
+                    # Try partial match: department name starts with the given value (e.g., "BCA" matches "BCA - Computer Science")
                     try:
-                        department = Department.objects.get(code__iexact=department_name)
-                    except Exception:
-                        errors.append(f"Row {row_num}: Department '{department_name}' not found by name or code")
+                        department = Department.objects.get(name__istartswith=department_name)
+                    except Department.DoesNotExist:
+                        errors.append(f"Row {row_num}: Department '{department_name}' not found. Available: {', '.join(Department.objects.values_list('name', flat=True))}")
+                        continue
+                    except Department.MultipleObjectsReturned:
+                        matches = Department.objects.filter(name__istartswith=department_name).values_list('name', flat=True)
+                        errors.append(f"Row {row_num}: Multiple departments match '{department_name}': {', '.join(matches)}. Please be more specific.")
                         continue
             
             # Get password (default to username if not provided)

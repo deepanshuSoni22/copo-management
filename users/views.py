@@ -306,14 +306,23 @@ def download_sample_csv(request):
     """
     import csv
     from django.http import HttpResponse
+    from academics.models import Department
     
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = 'attachment; filename="sample_users.csv"'
     
     writer = csv.writer(response)
-    writer.writerow(['username', 'first_name', 'last_name', 'email', 'role', 'department_id', 'password'])
-    writer.writerow(['john_doe', 'John', 'Doe', 'john@example.com', 'STUDENT', '1', 'password123'])
-    writer.writerow(['jane_smith', 'Jane', 'Smith', 'jane@example.com', 'FACULTY', '1', 'password123'])
-    writer.writerow(['admin_user', 'Admin', 'User', 'admin@example.com', 'ADMIN', '', 'adminpass'])
+    writer.writerow(['username', 'first_name', 'last_name', 'email', 'role', 'department', 'password'])
+    
+    # Get first department and extract short name (e.g., "BCA" from "BCA - Computer Science")
+    dept_example = Department.objects.first()
+    if dept_example and ' - ' in dept_example.name:
+        # Extract short code before the hyphen (e.g., "BCA" from "BCA - Computer Science")
+        dept_short = dept_example.name.split(' - ')[0]
+    else:
+        dept_short = dept_example.name if dept_example else "BCA"
+    
+    writer.writerow(['john_doe', 'John', 'Doe', 'john@example.com', 'STUDENT', dept_short, 'password123'])
+    writer.writerow(['jane_smith', 'Jane', 'Smith', 'jane@example.com', 'FACULTY', dept_short, 'password123'])
     
     return response
