@@ -178,14 +178,29 @@ def bulk_user_upload(request):
     """
     View to handle bulk user upload via CSV file.
     """
+    print("\n" + "="*80)
+    print("🚀 BULK USER UPLOAD - START")
+    print("="*80)
+    
     if request.method == 'POST':
+        print("📥 POST request received")
+        print(f"📎 Files uploaded: {request.FILES.keys()}")
+        
         form = BulkUserUploadForm(request.POST, request.FILES)
         if form.is_valid():
+            print("✅ Form is valid, parsing CSV...")
+            
             users_data, errors = form.parse_csv()
+            
+            print(f"\n📊 Parse Results:")
+            print(f"   Users parsed: {len(users_data)}")
+            print(f"   Errors found: {len(errors)}")
             
             # If there are validation errors, show them
             if errors:
+                print(f"\n❌ Validation errors - showing to user:")
                 for error in errors:
+                    print(f"   - {error}")
                     messages.error(request, error)
                 context = {
                     'form': form,
@@ -197,17 +212,30 @@ def bulk_user_upload(request):
             serializable_users_data = []
             for user_data in users_data:
                 serializable_data = user_data.copy()
-                # Convert Department object to ID (or None)
-                serializable_data['department_id'] = user_data['department'].id if user_data['department'] else None
-                # Remove the Department object
-                serializable_data.pop('department', None)
+                # The parse_csv already returns department_id, not Department object
+                # So this conversion is no longer needed, but keep for safety
+                if 'department' in serializable_data and serializable_data['department'] is not None:
+                    if hasattr(serializable_data['department'], 'id'):
+                        serializable_data['department_id'] = serializable_data['department'].id
+                    serializable_data.pop('department', None)
                 serializable_users_data.append(serializable_data)
+            
+            print(f"✅ Storing {len(serializable_users_data)} users in session")
             
             # Store serializable data in session for preview
             request.session['bulk_users_data'] = serializable_users_data
             messages.info(request, f'Found {len(serializable_users_data)} valid users. Please review and confirm.')
+            
+            print("➡️ Redirecting to preview page")
+            print("="*80 + "\n")
             return redirect('bulk_user_preview')
+        else:
+            print(f"❌ Form validation failed:")
+            print(f"   Errors: {form.errors}")
+            print("="*80 + "\n")
     else:
+        print("📄 GET request - showing upload form")
+        print("="*80 + "\n")
         form = BulkUserUploadForm()
     
     context = {
@@ -236,32 +264,33 @@ def bulk_user_preview(request):
 
         for user_data in users_data:
             try:
-                # --- FIX: Retrieve Department object from ID ---
-                department = None
-                if user_data.get('department_id'):
-                    from academics.models import Department
-                    try:
-                        department = Department.objects.get(id=user_data['department_id'])
-                    except Department.DoesNotExist:
-                        pass  # Department not found, will be None
-                
-                # Create user
-                user = User.objects.create_user(
-                    username=user_data['username'],
-                    email=user_data['email'],
-                    password=user_data['password'],
-                    first_name=user_data['first_name'],
-                    last_name=user_data['last_name']
-                )
+                with transaction.atomic():
+                    # --- FIX: Retrieve Department object from ID ---
+                    department = None
+                    if user_data.get('department_id'):
+                        from academics.models import Department
+                        try:
+                            department = Department.objects.get(id=user_data['department_id'])
+                        except Department.DoesNotExist:
+                            pass  # Department not found, will be None
+                    
+                    # Create user
+                    user = User.objects.create_user(
+                        username=user_data['username'],
+                        email=user_data['email'],
+                        password=user_data['password'],
+                        first_name=user_data['first_name'],
+                        last_name=user_data['last_name']
+                    )
 
-                # Idempotent profile creation: works with signals too
-                UserProfile.objects.get_or_create(
-                    user=user,
-                    defaults={
-                        'role': user_data['role'],
-                        'department': department,
-                    }
-                )
+                    # FIX: Explicitly get the profile created by signal and update it
+                    # The signal creates the profile with default STUDENT role
+                    # We must update it with the correct role from CSV
+                    user.refresh_from_db()
+                    profile = user.profile
+                    profile.role = user_data['role']
+                    profile.department = department
+                    profile.save(update_fields=['role', 'department'])
 
                 created_count += 1
             except Exception as e:
