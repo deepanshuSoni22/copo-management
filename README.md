@@ -2,10 +2,9 @@
 
 A comprehensive web-based system for managing Course Outcomes (CO) and Program Outcomes (PO) assessment and attainment in educational institutions.
 
-![COPO Management System Login Page](./screenshots/login-page.png)
-
 ## Table of Contents
 
+- [Screenshots](#screenshots)
 - [Overview](#overview)
 - [Features](#features)
 - [Technology Stack](#technology-stack)
@@ -13,9 +12,30 @@ A comprehensive web-based system for managing Course Outcomes (CO) and Program O
 - [Usage](#usage)
 - [User Roles](#user-roles)
 - [Project Structure](#project-structure)
-- [Screenshots](#screenshots)
 - [Contributing](#contributing)
 - [License](#license)
+
+![COPO Management System Login Page](./screenshots/login-page.png)
+
+## Screenshots
+
+### Dashboard
+![Dashboard](./screenshots/dashboard.png)
+
+### Program Outcomes Management
+![Program Outcomes](./screenshots/program_outcomes.png)
+
+### Course Outcomes Mapping
+![CO-PO Mapping](./screenshots/co_po_mapping.png)
+
+### Assessment Creation
+![Assessment Creation](./screenshots/assessment_creation.png)
+
+### Attainment Reports
+![Attainment Reports](./screenshots/attainment_reports.png)
+
+### Student View
+![Student Dashboard](./screenshots/student_dashboard.png)
 
 ## Overview
 
@@ -155,26 +175,6 @@ copo_management_system/
 │   └── images/                # Image assets
 └── requirements.txt           # Project dependencies
 ```
-
-## Screenshots
-
-### Dashboard
-![Dashboard](./screenshots/dashboard.png)
-
-### Program Outcomes Management
-![Program Outcomes](./screenshots/program_outcomes.png)
-
-### Course Outcomes Mapping
-![CO-PO Mapping](./screenshots/co_po_mapping.png)
-
-### Assessment Creation
-![Assessment Creation](./screenshots/assessment_creation.png)
-
-### Attainment Reports
-![Attainment Reports](./screenshots/attainment_reports.png)
-
-### Student View
-![Student Dashboard](./screenshots/student_dashboard.png)
 
 ## Contributing
 
